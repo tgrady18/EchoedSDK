@@ -1,18 +1,18 @@
 import Foundation
+import SwiftUI
 import Combine
 
-public class EchoedSDK: ObservableObject {
+public class EchoedSDK {
     public static let shared = EchoedSDK()
     
-    private let networkManager: NetworkManager
+     let networkManager: NetworkManager
     private let userTagManager: UserTagManager
-    
-    // Published property to hold messages to display
-    @Published public var messagesToDisplay: [Message] = []
+    private let messageManager: MessageManager
     
     private init() {
         networkManager = NetworkManager()
         userTagManager = UserTagManager()
+        messageManager = MessageManager()
     }
     
     public func initialize(apiKey: String, companyId: String) {
@@ -24,22 +24,9 @@ public class EchoedSDK: ObservableObject {
         networkManager.fetchMessagesForAnchor(anchorId: anchorId, userTags: userTags) { [weak self] result in
             switch result {
             case .success(let messages):
-                DispatchQueue.main.async {
-                    self?.messagesToDisplay = messages
-                }
+                self?.messageManager.present(messages: messages)
             case .failure(let error):
                 print("Error fetching messages: \(error)")
-            }
-        }
-    }
-    
-    public func sendMessageResponse(messageId: String, response: String) {
-        networkManager.sendMessageResponse(messageId: messageId, response: response) { result in
-            switch result {
-            case .success:
-                print("Response sent successfully")
-            case .failure(let error):
-                print("Error sending response: \(error)")
             }
         }
     }
