@@ -4,7 +4,7 @@ import Combine
 public class EchoedSDK {
     public static let shared = EchoedSDK()
     
-    private let networkManager: NetworkManager
+    public let networkManager: NetworkManager
     private let userTagManager: UserTagManager
     private let messageManager: MessageManager
     

@@ -3,24 +3,31 @@ import SwiftUI
 class MessageDisplayer {
     static let shared = MessageDisplayer()
     private var window: UIWindow?
-
+    
     func display(_ message: Message, completion: @escaping (String) -> Void) {
-        let hostingController = UIHostingController(rootView: MessageView(message: message, onResponse: { response in
-            completion(response)
-            self.dismiss()
-        }))
-        
-        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-            window = UIWindow(windowScene: scene)
-            window?.rootViewController = hostingController
-            window?.windowLevel = UIWindow.Level.alert + 1
-            window?.makeKeyAndVisible()
+        DispatchQueue.main.async { [weak self] in
+            let hostingController = UIHostingController(rootView: MessageView(message: message, onResponse: { response in
+                completion(response)
+                self?.dismiss()
+            }))
+            
+            // Find the current active window scene
+            if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                self?.window = UIWindow(windowScene: scene)
+                self?.window?.rootViewController = hostingController
+                self?.window?.windowLevel = UIWindow.Level.alert + 1
+                self?.window?.makeKeyAndVisible()
+            } else {
+                print("No active UIWindowScene found.")
+            }
         }
     }
     
     private func dismiss() {
-        window?.isHidden = true
-        window = nil
+        DispatchQueue.main.async { [weak self] in
+            self?.window?.isHidden = true
+            self?.window = nil
+        }
     }
 }
 
@@ -54,7 +61,7 @@ struct MultiChoiceMessageView: View {
     @State private var selectedOption: String?
     
     var body: some View {
-        VStack {
+        VStack(spacing: 20) {
             Picker("Select an option", selection: $selectedOption) {
                 ForEach(options, id: \.self) { option in
                     Text(option).tag(option as String?)
@@ -79,7 +86,7 @@ struct TextInputMessageView: View {
     @State private var userInput: String = ""
     
     var body: some View {
-        VStack {
+        VStack(spacing: 20) {
             TextField("Enter your response", text: $userInput)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .padding()
