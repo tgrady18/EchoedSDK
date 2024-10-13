@@ -7,8 +7,8 @@
 
 import Foundation
 
-public struct Message: Codable {
-    let id: String
+public struct Message: Codable, Identifiable {
+    public let id: String
     let anchorId: String
     let type: MessageType
     let title: String

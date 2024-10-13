@@ -1,52 +1,50 @@
 import Foundation
-import UIKit
+import Combine
 
-public class EchoedSDK {
+public class EchoedSDK: ObservableObject {
     public static let shared = EchoedSDK()
     
     private let networkManager: NetworkManager
     private let userTagManager: UserTagManager
-    private let messageDisplayer: MessageDisplayer
+    
+    // Published property to hold messages to display
+    @Published public var messagesToDisplay: [Message] = []
     
     private init() {
         networkManager = NetworkManager()
         userTagManager = UserTagManager()
-        messageDisplayer = MessageDisplayer()
     }
     
     public func initialize(apiKey: String, companyId: String) {
         networkManager.initialize(withApiKey: apiKey, companyId: companyId)
     }
 
-    public func hitAnchor(_ anchorId: String, in viewController: UIViewController, completion: @escaping (Result<Void, Error>) -> Void) {
+    public func hitAnchor(_ anchorId: String) {
         let userTags = userTagManager.getAllTags()
         networkManager.fetchMessagesForAnchor(anchorId: anchorId, userTags: userTags) { [weak self] result in
             switch result {
             case .success(let messages):
-                self?.displayMessages(messages, in: viewController, completion: completion)
+                DispatchQueue.main.async {
+                    self?.messagesToDisplay = messages
+                }
             case .failure(let error):
-                completion(.failure(error))
+                print("Error fetching messages: \(error)")
             }
         }
     }
     
-    private func displayMessages(_ messages: [Message], in viewController: UIViewController, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard !messages.isEmpty else {
-            completion(.success(()))
-            return
-        }
-        
-        var remainingMessages = messages
-        let message = remainingMessages.removeFirst()
-        
-        messageDisplayer.display(message, in: viewController) { [weak self] response in
-            // Handle the response, e.g., send it back to the server
-            self?.networkManager.sendMessageResponse(messageId: message.id, response: response) { _ in }
-            // Display the next message
-            self?.displayMessages(remainingMessages, in: viewController, completion: completion)
+    public func sendMessageResponse(messageId: String, response: String) {
+        networkManager.sendMessageResponse(messageId: messageId, response: response) { result in
+            switch result {
+            case .success:
+                print("Response sent successfully")
+            case .failure(let error):
+                print("Error sending response: \(error)")
+            }
         }
     }
     
+    // User tag methods remain the same
     public func setUserTag(_ key: String, value: Any) {
         userTagManager.setTag(key, value: value)
     }
