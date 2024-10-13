@@ -1,11 +1,10 @@
 import Foundation
-import SwiftUI
 import Combine
 
 public class EchoedSDK {
     public static let shared = EchoedSDK()
     
-     let networkManager: NetworkManager
+    private let networkManager: NetworkManager
     private let userTagManager: UserTagManager
     private let messageManager: MessageManager
     
@@ -24,7 +23,9 @@ public class EchoedSDK {
         networkManager.fetchMessagesForAnchor(anchorId: anchorId, userTags: userTags) { [weak self] result in
             switch result {
             case .success(let messages):
-                self?.messageManager.present(messages: messages)
+                DispatchQueue.main.async {
+                    self?.messageManager.present(messages: messages)
+                }
             case .failure(let error):
                 print("Error fetching messages: \(error)")
             }
