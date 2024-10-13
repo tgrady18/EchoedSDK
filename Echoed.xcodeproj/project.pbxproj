@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		69AAF8412CBB17F4008A1E12 /* Echoed.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 69AAF8362CBB17F3008A1E12 /* Echoed.framework */; };
+		69AAF8642CBC5C93008A1E12 /* Package.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69AAF8632CBC5C93008A1E12 /* Package.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -23,13 +24,14 @@
 /* Begin PBXFileReference section */
 		69AAF8362CBB17F3008A1E12 /* Echoed.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Echoed.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		69AAF8402CBB17F4008A1E12 /* EchoedTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EchoedTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		69AAF8632CBC5C93008A1E12 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		69AAF8482CBB17F4008A1E12 /* Exceptions for "Echoed" folder in "Echoed" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			publicHeaders = (
-				Echoed.h,
+				Sources/Echoed/Echoed.h,
 			);
 			target = 69AAF8352CBB17F3008A1E12 /* Echoed */;
 		};
@@ -73,6 +75,7 @@
 		69AAF82C2CBB17F3008A1E12 = {
 			isa = PBXGroup;
 			children = (
+				69AAF8632CBC5C93008A1E12 /* Package.swift */,
 				69AAF8382CBB17F3008A1E12 /* Echoed */,
 				69AAF8442CBB17F4008A1E12 /* EchoedTests */,
 				69AAF8372CBB17F3008A1E12 /* Products */,
@@ -207,6 +210,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				69AAF8642CBC5C93008A1E12 /* Package.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
