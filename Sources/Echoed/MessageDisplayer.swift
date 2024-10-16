@@ -80,6 +80,7 @@ struct MultiChoiceMessageView: View {
     }
 }
 
+
 struct TextInputMessageView: View {
     let message: Message
     let onResponse: (String) -> Void
@@ -87,14 +88,60 @@ struct TextInputMessageView: View {
     
     var body: some View {
         VStack(spacing: 20) {
+            Text(message.title)
+                .font(.system(size: 24, weight: .bold))
+                .foregroundColor(.black)
+                .multilineTextAlignment(.center)
+                .padding(.top, 20)
+                .padding(.horizontal, 20)
+            
+            Text(message.content)
+                .font(.body)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 20)
+            
             TextField("Enter your response", text: $userInput)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
                 .padding()
-            Button("Submit") {
+                .background(Color(UIColor.systemGray6))
+                .cornerRadius(10)
+                .padding(.horizontal, 20)
+            
+            Button(action: {
                 onResponse(userInput)
+            }) {
+                Text("SUBMIT")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.black)
+                    .cornerRadius(10)
             }
             .disabled(userInput.isEmpty)
-            .padding()
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
         }
+        .background(Color.white)
+        .cornerRadius(20)
+        .shadow(radius: 10)
+        .padding(20)
+    }
+}
+
+// Preview provider for SwiftUI canvas
+struct TextInputMessageView_Previews: PreviewProvider {
+    static var previews: some View {
+        TextInputMessageView(
+            message: Message(
+                id: "1",
+                anchorId: "anchor1",
+                type: .textInput,
+                title: "How likely are you to recommend Ground Hopper to a friend?",
+                content: "Please provide your feedback below",
+                options: nil
+            ),
+            onResponse: { _ in }
+        )
     }
 }
