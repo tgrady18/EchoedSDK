@@ -74,6 +74,7 @@ struct TextInputMessageView: View {
             
             Button(action: {
                 onResponse(userInput)
+                onDismiss()
             }) {
                 Text("SUBMIT")
                     .font(.headline)
@@ -136,6 +137,7 @@ struct MultiChoiceMessageView: View {
                 if let selectedOption = selectedOption {
                     onResponse(selectedOption)
                 }
+                onDismiss()
             }) {
                 Text("SUBMIT")
                     .font(.headline)
