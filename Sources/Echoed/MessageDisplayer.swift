@@ -5,24 +5,33 @@ class MessageDisplayer {
     private var window: UIWindow?
     
     func display(_ message: Message, completion: @escaping (String) -> Void) {
-        DispatchQueue.main.async { [weak self] in
+        DispatchQueue.main.async {
             let view: AnyView
             switch message.type {
             case .multiChoice:
-                view = AnyView(MultiChoiceMessageView(message: message, options: message.options ?? [], onResponse: completion, onDismiss: { self?.dismiss() }))
+                view = AnyView(MultiChoiceMessageView(
+                    message: message,
+                    options: message.options ?? [],
+                    onResponse: completion,
+                    onDismiss: { self.dismiss() }
+                ))
             case .textInput:
-                view = AnyView(TextInputMessageView(message: message, onResponse: completion, onDismiss: { self?.dismiss() }))
+                view = AnyView(TextInputMessageView(
+                    message: message,
+                    onResponse: completion,
+                    onDismiss: { self.dismiss() }
+                ))
             }
             
             let hostingController = UIHostingController(rootView: view)
             hostingController.view.backgroundColor = .clear
             
             if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-                self?.window = UIWindow(windowScene: scene)
-                self?.window?.rootViewController = hostingController
-                self?.window?.windowLevel = UIWindow.Level.alert + 1
-                self?.window?.backgroundColor = .clear
-                self?.window?.makeKeyAndVisible()
+                self.window = UIWindow(windowScene: scene)
+                self.window?.rootViewController = hostingController
+                self.window?.windowLevel = UIWindow.Level.alert + 1
+                self.window?.backgroundColor = .clear
+                self.window?.makeKeyAndVisible()
             } else {
                 print("No active UIWindowScene found.")
             }
@@ -30,9 +39,10 @@ class MessageDisplayer {
     }
     
     private func dismiss() {
-        DispatchQueue.main.async { [weak self] in
-            self?.window?.isHidden = true
-            self?.window = nil
+        DispatchQueue.main.async {
+            print("Dismiss called")
+            self.window?.isHidden = true
+            self.window = nil
         }
     }
 }
