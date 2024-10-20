@@ -17,7 +17,7 @@ public class UserTagManager {
     private let firstSessionTimeKey = "first_session_time"
     private let sessionCountKey = "session_count"
     private let lastSessionTimeKey = "last_session_time"
-    private let sessionTimeout: TimeInterval = 60 // 1 minute in seconds
+    private let sessionTimeout: TimeInterval = 5
 
     public init() {
         initializeInternalTags()
@@ -70,7 +70,7 @@ public class UserTagManager {
         let currentTime = Date().timeIntervalSince1970
         let lastSessionTime = getTag(lastSessionTimeKey) as? TimeInterval ?? 0
         
-        // Check if the time since the last session is greater than 1 minute
+        // Check if the time since the last session is greater than time out
         if currentTime - lastSessionTime > sessionTimeout {
             let currentCount = getTag(sessionCountKey) as? Int ?? 0
             setTag(sessionCountKey, value: currentCount + 1)
