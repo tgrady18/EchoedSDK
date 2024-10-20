@@ -24,13 +24,13 @@ class MessageDisplayer {
             }
             
             let hostingController = UIHostingController(rootView: view)
-            hostingController.view.backgroundColor = .clear
+            hostingController.view.backgroundColor = UIColor.clear // Ensure transparency
             
             if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
                 self.window = UIWindow(windowScene: scene)
                 self.window?.rootViewController = hostingController
                 self.window?.windowLevel = UIWindow.Level.alert + 1
-                self.window?.backgroundColor = .clear
+                self.window?.backgroundColor = UIColor.black.withAlphaComponent(0.5) // Semi-transparent background
                 self.window?.makeKeyAndVisible()
             } else {
                 print("No active UIWindowScene found.")
@@ -52,6 +52,7 @@ struct TextInputMessageView: View {
     let onResponse: (String) -> Void
     let onDismiss: () -> Void
     @State private var userInput: String = ""
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         VStack(spacing: 20) {
@@ -66,39 +67,46 @@ struct TextInputMessageView: View {
             
             Text(message.title)
                 .font(.system(size: 24, weight: .bold))
-                .foregroundColor(.black)
+                .foregroundColor(colorScheme == .dark ? .white : .black) // High contrast
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 20)
             
             Text(message.content)
                 .font(.body)
-                .foregroundColor(.secondary)
+                .foregroundColor(.gray)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 20)
             
             TextField("Enter your response", text: $userInput)
                 .padding()
-                .background(Color(UIColor.systemGray6))
+                .background(Color(UIColor.systemGray5))
+                .foregroundColor(colorScheme == .dark ? .white : .black)
+                .keyboardType(.default)
                 .cornerRadius(10)
                 .padding(.horizontal, 20)
             
             Button(action: {
+                // Haptic feedback
+                let generator = UIImpactFeedbackGenerator(style: .medium)
+                generator.impactOccurred()
+                
                 onResponse(userInput)
                 onDismiss()
             }) {
                 Text("SUBMIT")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(colorScheme == .dark ? .black : .white) // High contrast
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.black)
+                    .background(colorScheme == .dark ? Color.white : Color.black) // High contrast
                     .cornerRadius(10)
             }
             .disabled(userInput.isEmpty)
+            .opacity(userInput.isEmpty ? 0.5 : 1.0)
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
         }
-        .background(Color.white)
+        .background(colorScheme == .dark ? Color.black : Color.white) // High contrast background
         .cornerRadius(20)
         .padding(20)
         .frame(maxWidth: 350)
@@ -111,6 +119,7 @@ struct MultiChoiceMessageView: View {
     let onResponse: (String) -> Void
     let onDismiss: () -> Void
     @State private var selectedOption: String?
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         VStack(spacing: 20) {
@@ -125,43 +134,52 @@ struct MultiChoiceMessageView: View {
             
             Text(message.title)
                 .font(.system(size: 24, weight: .bold))
-                .foregroundColor(.black)
+                .foregroundColor(colorScheme == .dark ? .white : .black) // High contrast
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 20)
             
             Text(message.content)
                 .font(.body)
-                .foregroundColor(.secondary)
+                .foregroundColor(.gray)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 20)
             
             Picker("Select an option", selection: $selectedOption) {
                 ForEach(options, id: \.self) { option in
-                    Text(option).tag(option as String?)
+                    Text(option)
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .tag(option as String?)
                 }
             }
             .pickerStyle(WheelPickerStyle())
+            .background(Color(UIColor.systemGray5))
+            .cornerRadius(10)
             .padding()
             
             Button(action: {
                 if let selectedOption = selectedOption {
+                    // Haptic feedback
+                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                    generator.impactOccurred()
+                    
                     onResponse(selectedOption)
                 }
                 onDismiss()
             }) {
                 Text("SUBMIT")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(colorScheme == .dark ? .black : .white) // High contrast
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.black)
+                    .background(colorScheme == .dark ? Color.white : Color.black) // High contrast
                     .cornerRadius(10)
             }
             .disabled(selectedOption == nil)
+            .opacity(selectedOption == nil ? 0.5 : 1.0)
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
         }
-        .background(Color.white)
+        .background(colorScheme == .dark ? Color.black : Color.white) // High contrast background
         .cornerRadius(20)
         .padding(20)
         .frame(maxWidth: 350)
@@ -171,35 +189,74 @@ struct MultiChoiceMessageView: View {
 // Preview providers
 struct TextInputMessageView_Previews: PreviewProvider {
     static var previews: some View {
-        TextInputMessageView(
-            message: Message(
-                id: "1",
-                anchorId: "anchor1",
-                type: .textInput,
-                title: "How likely are you to recommend Ground Hopper to a friend?",
-                content: "Please provide your feedback below",
-                options: nil
-            ),
-            onResponse: { _ in },
-            onDismiss: {}
-        )
+        Group {
+            TextInputMessageView(
+                message: Message(
+                    id: "1",
+                    anchorId: "anchor1",
+                    type: .textInput,
+                    title: "How likely are you to recommend Ground Hopper to a friend?",
+                    content: "Please provide your feedback below",
+                    options: nil
+                ),
+                onResponse: { _ in },
+                onDismiss: {}
+            )
+            .previewDisplayName("Light Mode")
+            .preferredColorScheme(.light)
+            
+            TextInputMessageView(
+                message: Message(
+                    id: "1",
+                    anchorId: "anchor1",
+                    type: .textInput,
+                    title: "How likely are you to recommend Ground Hopper to a friend?",
+                    content: "Please provide your feedback below",
+                    options: nil
+                ),
+                onResponse: { _ in },
+                onDismiss: {}
+            )
+            .previewDisplayName("Dark Mode")
+            .preferredColorScheme(.dark)
+        }
     }
 }
 
 struct MultiChoiceMessageView_Previews: PreviewProvider {
     static var previews: some View {
-        MultiChoiceMessageView(
-            message: Message(
-                id: "2",
-                anchorId: "anchor2",
-                type: .multiChoice,
-                title: "How was your experience?",
-                content: "Please select one option",
-                options: ["Excellent", "Good", "Average", "Poor"]
-            ),
-            options: ["Excellent", "Good", "Average", "Poor"],
-            onResponse: { _ in },
-            onDismiss: {}
-        )
+        Group {
+            MultiChoiceMessageView(
+                message: Message(
+                    id: "2",
+                    anchorId: "anchor2",
+                    type: .multiChoice,
+                    title: "How was your experience?",
+                    content: "Please select one option",
+                    options: ["Excellent", "Good", "Average", "Poor"]
+                ),
+                options: ["Excellent", "Good", "Average", "Poor"],
+                onResponse: { _ in },
+                onDismiss: {}
+            )
+            .previewDisplayName("Light Mode")
+            .preferredColorScheme(.light)
+            
+            MultiChoiceMessageView(
+                message: Message(
+                    id: "2",
+                    anchorId: "anchor2",
+                    type: .multiChoice,
+                    title: "How was your experience?",
+                    content: "Please select one option",
+                    options: ["Excellent", "Good", "Average", "Poor"]
+                ),
+                options: ["Excellent", "Good", "Average", "Poor"],
+                onResponse: { _ in },
+                onDismiss: {}
+            )
+            .previewDisplayName("Dark Mode")
+            .preferredColorScheme(.dark)
+        }
     }
 }
