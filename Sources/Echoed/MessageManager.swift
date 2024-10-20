@@ -15,8 +15,11 @@ class MessageManager {
         isPresenting = true
         let message = messageQueue.removeFirst()
         MessageDisplayer.shared.display(message) { response in
-            // Handle the response
-            EchoedSDK.shared.networkManager.sendMessageResponse(messageId: message.id, response: response) { result in
+            // Get current user tags
+            let userTags = EchoedSDK.shared.getAllUserTags()
+            
+            // Send response with message ID and user tags
+            EchoedSDK.shared.networkManager.sendMessageResponse(messageId: message.id, response: response, userTags: userTags) { result in
                 switch result {
                 case .success:
                     print("Response sent successfully")

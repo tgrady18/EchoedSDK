@@ -166,7 +166,7 @@ public class NetworkManager {
         }
     }
     
-    public func sendMessageResponse(messageId: String, response: String, completion: @escaping (Result<Void, Error>) -> Void) {
+    public func sendMessageResponse(messageId: String, response: String, userTags: [String: Any], completion: @escaping (Result<Void, Error>) -> Void) {
         guard let companyId = companyId else {
             completion(.failure(NSError(domain: "NetworkManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Company ID not set"])))
             return
@@ -176,7 +176,8 @@ public class NetworkManager {
         let parameters: [String: Any] = [
             "companyId": companyId,
             "messageId": messageId,
-            "response": response
+            "response": response,
+            "userTags": userTags
         ]
         
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
@@ -188,7 +189,7 @@ public class NetworkManager {
             }
         }
     }
-    
+
     private func makeRequest(to endpoint: String, method: String, parameters: [String: Any], completion: @escaping (Result<Data, Error>) -> Void) {
         guard let url = URL(string: endpoint) else {
             completion(.failure(NSError(domain: "NetworkManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])))

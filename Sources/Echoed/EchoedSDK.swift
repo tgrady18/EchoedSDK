@@ -32,6 +32,11 @@ public class EchoedSDK {
         }
     }
     
+    public func getAllUserTags() -> [String: Any] {
+        return userTagManager.getAllTags()
+    }
+
+    
     // User tag methods remain the same
     public func setUserTag(_ key: String, value: Any) {
         userTagManager.setTag(key, value: value)
