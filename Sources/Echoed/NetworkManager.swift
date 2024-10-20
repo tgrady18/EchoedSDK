@@ -189,6 +189,29 @@ public class NetworkManager {
             }
         }
     }
+    
+    public func recordAnchorHit(anchorId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let companyId = companyId else {
+            completion(.failure(NSError(domain: "NetworkManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Company ID not set"])))
+            return
+        }
+        
+        let endpoint = baseURL + "recordAnchorHit"
+        let parameters: [String: Any] = [
+            "companyId": companyId,
+            "anchorId": anchorId
+        ]
+        
+        makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
+            switch result {
+            case .success:
+                completion(.success(()))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
 
     private func makeRequest(to endpoint: String, method: String, parameters: [String: Any], completion: @escaping (Result<Data, Error>) -> Void) {
         guard let url = URL(string: endpoint) else {
