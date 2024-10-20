@@ -20,6 +20,17 @@ public class EchoedSDK {
 
     public func hitAnchor(_ anchorId: String) {
         let userTags = userTagManager.getAllTags()
+        
+        // Report anchor hit to the backend
+        networkManager.recordAnchorHit(anchorId: anchorId) { result in
+            switch result {
+            case .success:
+                print("Anchor hit recorded successfully")
+            case .failure(let error):
+                print("Error recording anchor hit: \(error)")
+            }
+        }
+        
         networkManager.fetchMessagesForAnchor(anchorId: anchorId, userTags: userTags) { [weak self] result in
             switch result {
             case .success(let messages):
@@ -31,6 +42,7 @@ public class EchoedSDK {
             }
         }
     }
+
     
     public func getAllUserTags() -> [String: Any] {
         return userTagManager.getAllTags()
