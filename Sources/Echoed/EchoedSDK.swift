@@ -128,15 +128,28 @@ public class EchoedSDK {
 extension EchoedSDK {
     // Convenience method to set a tag with validation
     @discardableResult
-    public func setTag(_ key: String, value: Any, type: UserTagManager.TagType) -> Result<Void, SDKError> {
-        switch validateInitialization() {
-        case .success:
-            userTagManager.setTag(key, value: value, type: type)
-            return .success(())
-        case .failure(let error):
-            return .failure(error)
+        public func setTag(_ key: String, value: Any, type: UserTagManager.TagType) -> Result<Void, SDKError> {
+            switch validateInitialization() {
+            case .success:
+                // First set locally
+                userTagManager.setTag(key, value: value, type: type)
+                
+                // Then sync with Firebase
+                networkManager.updateTags(userTags: userTagManager) { result in
+                    switch result {
+                    case .success:
+                        print("Tags synced with Firebase successfully")
+                    case .failure(let error):
+                        print("Error syncing tags with Firebase: \(error)")
+                        // Could add retry logic here
+                    }
+                }
+                return .success(())
+                
+            case .failure(let error):
+                return .failure(error)
+            }
         }
-    }
     
     // Convenience method to get all tags as dictionary
     public func getTagsAsDictionary() -> [String: [String: Any]] {

@@ -246,6 +246,29 @@ public class NetworkManager {
         }
     }
     
+    // In NetworkManager
+    public func updateTags(userTags: UserTagManager, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let companyId = companyId else {
+            completion(.failure(NetworkError.companyIdNotSet))
+            return
+        }
+        
+        let endpoint = baseURL + "updateTags"
+        let parameters: [String: Any] = [
+            "companyId": companyId,
+            "userTags": userTags.getAllTagsForNetwork()
+        ]
+        
+        makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
+            switch result {
+            case .success:
+                completion(.success(()))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+    
     public enum NetworkError: Error {
         case companyIdNotSet
         case invalidURL
