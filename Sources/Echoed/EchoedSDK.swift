@@ -131,17 +131,16 @@ extension EchoedSDK {
         public func setTag(_ key: String, value: Any, type: UserTagManager.TagType) -> Result<Void, SDKError> {
             switch validateInitialization() {
             case .success:
-                // First set locally
+                // Set locally
                 userTagManager.setTag(key, value: value, type: type)
                 
-                // Then sync with Firebase
+                // Sync with Firebase
                 networkManager.updateTags(userTags: userTagManager) { result in
                     switch result {
                     case .success:
                         print("Tags synced with Firebase successfully")
                     case .failure(let error):
                         print("Error syncing tags with Firebase: \(error)")
-                        // Could add retry logic here
                     }
                 }
                 return .success(())
@@ -150,6 +149,7 @@ extension EchoedSDK {
                 return .failure(error)
             }
         }
+        
     
     // Convenience method to get all tags as dictionary
     public func getTagsAsDictionary() -> [String: [String: Any]] {

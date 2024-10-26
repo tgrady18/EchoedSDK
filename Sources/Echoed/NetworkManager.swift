@@ -14,30 +14,6 @@ public class NetworkManager {
         self.companyId = companyId
     }
     
-    // MARK: - Tag Definitions
-    public func fetchTagDefinitions(completion: @escaping (Result<[TagDefinition], Error>) -> Void) {
-        guard let companyId = companyId else {
-            completion(.failure(NetworkError.companyIdNotSet))
-            return
-        }
-        
-        let endpoint = baseURL + "fetchTags"
-        let parameters = ["companyId": companyId]
-        
-        makeRequest(to: endpoint, method: "GET", parameters: parameters) { result in
-            switch result {
-            case .success(let data):
-                do {
-                    let tagDefinitions = try JSONDecoder().decode([TagDefinition].self, from: data)
-                    completion(.success(tagDefinitions))
-                } catch {
-                    completion(.failure(error))
-                }
-            case .failure(let error):
-                completion(.failure(error))
-            }
-        }
-    }
     
     // MARK: - Echo Methods
     public func sendEcho(anchorId: String, userTags: UserTagManager, completion: @escaping (Result<Void, Error>) -> Void) {
@@ -215,59 +191,30 @@ public class NetworkManager {
     }
     
     // MARK: - Models
-    public struct TagDefinition: Codable {
-        public let tag_id: String
-        public let data_type: UserTagManager.TagType
-        public let first_seen: Date
-        public let last_seen: Date
-        public let available_operations: [String]
-        
-        enum CodingKeys: String, CodingKey {
-            case tag_id
-            case data_type
-            case first_seen
-            case last_seen
-            case available_operations
-        }
-        
-        public init(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: CodingKeys.self)
-            tag_id = try container.decode(String.self, forKey: .tag_id)
-            data_type = try container.decode(UserTagManager.TagType.self, forKey: .data_type)
-            
-            // Convert Firebase Timestamp to Date
-            let firstSeenTimestamp = try container.decode(Double.self, forKey: .first_seen)
-            first_seen = Date(timeIntervalSince1970: firstSeenTimestamp)
-            
-            let lastSeenTimestamp = try container.decode(Double.self, forKey: .last_seen)
-            last_seen = Date(timeIntervalSince1970: lastSeenTimestamp)
-            
-            available_operations = try container.decode([String].self, forKey: .available_operations)
-        }
-    }
+    
     
     // In NetworkManager
     public func updateTags(userTags: UserTagManager, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let companyId = companyId else {
-            completion(.failure(NetworkError.companyIdNotSet))
-            return
-        }
-        
-        let endpoint = baseURL + "updateTags"
-        let parameters: [String: Any] = [
-            "companyId": companyId,
-            "userTags": userTags.getAllTagsForNetwork()
-        ]
-        
-        makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
-            switch result {
-            case .success:
-                completion(.success(()))
-            case .failure(let error):
-                completion(.failure(error))
-            }
-        }
-    }
+         guard let companyId = companyId else {
+             completion(.failure(NetworkError.companyIdNotSet))
+             return
+         }
+         
+         let endpoint = baseURL + "updateTags"
+         let parameters: [String: Any] = [
+             "companyId": companyId,
+             "userTags": userTags.getAllTagsForNetwork()
+         ]
+         
+         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
+             switch result {
+             case .success:
+                 completion(.success(()))
+             case .failure(let error):
+                 completion(.failure(error))
+             }
+         }
+     }
     
     public enum NetworkError: Error {
         case companyIdNotSet
