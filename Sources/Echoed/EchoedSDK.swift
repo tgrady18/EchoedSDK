@@ -11,12 +11,6 @@ public class EchoedSDK {
     }
     private let messageManager: MessageManager
     
-    // Add publishers for tag updates
-    private var tagDefinitionsSubject = PassthroughSubject<[NetworkManager.TagDefinition], Never>()
-    public var tagDefinitions: AnyPublisher<[NetworkManager.TagDefinition], Never> {
-        return tagDefinitionsSubject.eraseToAnyPublisher()
-    }
-    
     private init() {
         networkManager = NetworkManager()
         userTagManager = UserTagManager()
@@ -25,19 +19,6 @@ public class EchoedSDK {
     
     public func initialize(apiKey: String, companyId: String) {
         networkManager.initialize(withApiKey: apiKey, companyId: companyId)
-        fetchTagDefinitions()
-    }
-    
-    // MARK: - Tag Definition Handling
-    private func fetchTagDefinitions() {
-        networkManager.fetchTagDefinitions { [weak self] result in
-            switch result {
-            case .success(let definitions):
-                self?.tagDefinitionsSubject.send(definitions)
-            case .failure(let error):
-                print("Error fetching tag definitions: \(error)")
-            }
-        }
     }
     
     // MARK: - Anchor Methods
@@ -67,7 +48,18 @@ public class EchoedSDK {
     
     // MARK: - User Tag Methods
     public func setUserTag(_ key: String, value: Any, type: UserTagManager.TagType) {
+        // Set locally
         userTagManager.setTag(key, value: value, type: type)
+        
+        // Sync with Firebase
+        networkManager.updateTags(userTags: userTagManager) { result in
+            switch result {
+            case .success:
+                print("Tags synced with Firebase successfully")
+            case .failure(let error):
+                print("Error syncing tags with Firebase: \(error)")
+            }
+        }
     }
     
     public func getUserTagValue(_ key: String) -> Any? {
@@ -84,10 +76,28 @@ public class EchoedSDK {
     
     public func removeUserTag(_ key: String) {
         userTagManager.removeTag(key)
+        // Sync removal with Firebase
+        networkManager.updateTags(userTags: userTagManager) { result in
+            switch result {
+            case .success:
+                print("Tag removal synced with Firebase successfully")
+            case .failure(let error):
+                print("Error syncing tag removal with Firebase: \(error)")
+            }
+        }
     }
     
     public func clearAllUserTags() {
         userTagManager.clearAllTags()
+        // Sync cleared tags with Firebase
+        networkManager.updateTags(userTags: userTagManager) { result in
+            switch result {
+            case .success:
+                print("Cleared tags synced with Firebase successfully")
+            case .failure(let error):
+                print("Error syncing cleared tags with Firebase: \(error)")
+            }
+        }
     }
     
     // MARK: - Debug Methods
@@ -115,43 +125,10 @@ public class EchoedSDK {
             }
         }
     }
-    
-    // MARK: - Validation Helper
-    private func validateInitialization() -> Result<Void, SDKError> {
-        // Add any initialization validation logic here
-        // For now, just return success
-        return .success(())
-    }
 }
 
 // MARK: - Helper Extensions
 extension EchoedSDK {
-    // Convenience method to set a tag with validation
-    @discardableResult
-        public func setTag(_ key: String, value: Any, type: UserTagManager.TagType) -> Result<Void, SDKError> {
-            switch validateInitialization() {
-            case .success:
-                // Set locally
-                userTagManager.setTag(key, value: value, type: type)
-                
-                // Sync with Firebase
-                networkManager.updateTags(userTags: userTagManager) { result in
-                    switch result {
-                    case .success:
-                        print("Tags synced with Firebase successfully")
-                    case .failure(let error):
-                        print("Error syncing tags with Firebase: \(error)")
-                    }
-                }
-                return .success(())
-                
-            case .failure(let error):
-                return .failure(error)
-            }
-        }
-        
-    
-    // Convenience method to get all tags as dictionary
     public func getTagsAsDictionary() -> [String: [String: Any]] {
         var result: [String: [String: Any]] = [:]
         let tags = userTagManager.getAllTags()
