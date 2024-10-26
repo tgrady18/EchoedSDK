@@ -4,7 +4,6 @@ struct FetchMessagesResponse: Codable {
     let messages: [Message]
 }
 
-
 public class NetworkManager {
     private let baseURL = "https://us-central1-echoed-ccedb.cloudfunctions.net/"
     private var apiKey: String?
@@ -15,9 +14,35 @@ public class NetworkManager {
         self.companyId = companyId
     }
     
-    public func sendEcho(anchorId: String, userTags: [String: Any], completion: @escaping (Result<Void, Error>) -> Void) {
+    // MARK: - Tag Definitions
+    public func fetchTagDefinitions(completion: @escaping (Result<[TagDefinition], Error>) -> Void) {
         guard let companyId = companyId else {
-            completion(.failure(NSError(domain: "NetworkManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Company ID not set"])))
+            completion(.failure(NetworkError.companyIdNotSet))
+            return
+        }
+        
+        let endpoint = baseURL + "fetchTags"
+        let parameters = ["companyId": companyId]
+        
+        makeRequest(to: endpoint, method: "GET", parameters: parameters) { result in
+            switch result {
+            case .success(let data):
+                do {
+                    let tagDefinitions = try JSONDecoder().decode([TagDefinition].self, from: data)
+                    completion(.success(tagDefinitions))
+                } catch {
+                    completion(.failure(error))
+                }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+    
+    // MARK: - Echo Methods
+    public func sendEcho(anchorId: String, userTags: UserTagManager, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let companyId = companyId else {
+            completion(.failure(NetworkError.companyIdNotSet))
             return
         }
         
@@ -25,7 +50,7 @@ public class NetworkManager {
         let parameters: [String: Any] = [
             "companyId": companyId,
             "anchorId": anchorId,
-            "userTags": userTags
+            "userTags": userTags.getAllTagsForNetwork()
         ]
         
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
@@ -38,9 +63,9 @@ public class NetworkManager {
         }
     }
     
-    public func fetchMessagesForAnchor(anchorId: String, userTags: [String: Any], completion: @escaping (Result<[Message], Error>) -> Void) {
+    public func fetchMessagesForAnchor(anchorId: String, userTags: UserTagManager, completion: @escaping (Result<[Message], Error>) -> Void) {
         guard let companyId = companyId else {
-            completion(.failure(NSError(domain: "NetworkManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Company ID not set"])))
+            completion(.failure(NetworkError.companyIdNotSet))
             return
         }
 
@@ -48,7 +73,7 @@ public class NetworkManager {
         let parameters: [String: Any] = [
             "companyId": companyId,
             "anchorId": anchorId,
-            "userTags": userTags
+            "userTags": userTags.getAllTagsForNetwork()
         ]
 
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
@@ -66,10 +91,10 @@ public class NetworkManager {
         }
     }
     
-    
+    // MARK: - Anchor Methods
     public func fetchAnchors(completion: @escaping (Result<[String], Error>) -> Void) {
         guard let companyId = companyId else {
-            completion(.failure(NSError(domain: "NetworkManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Company ID not set"])))
+            completion(.failure(NetworkError.companyIdNotSet))
             return
         }
         
@@ -91,9 +116,32 @@ public class NetworkManager {
         }
     }
     
+    public func recordAnchorHit(anchorId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let companyId = companyId else {
+            completion(.failure(NetworkError.companyIdNotSet))
+            return
+        }
+        
+        let endpoint = baseURL + "recordAnchorHit"
+        let parameters: [String: Any] = [
+            "companyId": companyId,
+            "anchorId": anchorId
+        ]
+        
+        makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
+            switch result {
+            case .success:
+                completion(.success(()))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+    
+    // MARK: - Message Methods
     public func fetchRuleSets(completion: @escaping (Result<[RuleSet], Error>) -> Void) {
         guard let companyId = companyId else {
-            completion(.failure(NSError(domain: "NetworkManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Company ID not set"])))
+            completion(.failure(NetworkError.companyIdNotSet))
             return
         }
         
@@ -115,33 +163,9 @@ public class NetworkManager {
         }
     }
     
-    public func checkUserTags(_ userTags: [String: Any], completion: @escaping (Result<Bool, Error>) -> Void) {
-        guard let companyId = companyId else {
-            completion(.failure(NSError(domain: "NetworkManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Company ID not set"])))
-            return
-        }
-        
-        let endpoint = baseURL + "checkUserTags"
-        var parameters: [String: Any] = ["companyId": companyId]
-        parameters.merge(userTags) { (_, new) in new }
-        
-        makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
-            switch result {
-            case .success(let data):
-                if let isValid = try? JSONDecoder().decode(Bool.self, from: data) {
-                    completion(.success(isValid))
-                } else {
-                    completion(.failure(NSError(domain: "NetworkManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Invalid response format"])))
-                }
-            case .failure(let error):
-                completion(.failure(error))
-            }
-        }
-    }
-    
     public func fetchMessages(for messageIds: [String], completion: @escaping (Result<[Message], Error>) -> Void) {
         guard let companyId = companyId else {
-            completion(.failure(NSError(domain: "NetworkManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Company ID not set"])))
+            completion(.failure(NetworkError.companyIdNotSet))
             return
         }
         
@@ -166,9 +190,9 @@ public class NetworkManager {
         }
     }
     
-    public func sendMessageResponse(messageId: String, response: String, userTags: [String: Any], completion: @escaping (Result<Void, Error>) -> Void) {
+    public func sendMessageResponse(messageId: String, response: String, userTags: UserTagManager, completion: @escaping (Result<Void, Error>) -> Void) {
         guard let companyId = companyId else {
-            completion(.failure(NSError(domain: "NetworkManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Company ID not set"])))
+            completion(.failure(NetworkError.companyIdNotSet))
             return
         }
         
@@ -177,7 +201,7 @@ public class NetworkManager {
             "companyId": companyId,
             "messageId": messageId,
             "response": response,
-            "userTags": userTags
+            "userTags": userTags.getAllTagsForNetwork()
         ]
         
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
@@ -190,32 +214,49 @@ public class NetworkManager {
         }
     }
     
-    public func recordAnchorHit(anchorId: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let companyId = companyId else {
-            completion(.failure(NSError(domain: "NetworkManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Company ID not set"])))
-            return
+    // MARK: - Models
+    public struct TagDefinition: Codable {
+        public let tag_id: String
+        public let data_type: UserTagManager.TagType
+        public let first_seen: Date
+        public let last_seen: Date
+        public let available_operations: [String]
+        
+        enum CodingKeys: String, CodingKey {
+            case tag_id
+            case data_type
+            case first_seen
+            case last_seen
+            case available_operations
         }
         
-        let endpoint = baseURL + "recordAnchorHit"
-        let parameters: [String: Any] = [
-            "companyId": companyId,
-            "anchorId": anchorId
-        ]
-        
-        makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
-            switch result {
-            case .success:
-                completion(.success(()))
-            case .failure(let error):
-                completion(.failure(error))
-            }
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            tag_id = try container.decode(String.self, forKey: .tag_id)
+            data_type = try container.decode(UserTagManager.TagType.self, forKey: .data_type)
+            
+            // Convert Firebase Timestamp to Date
+            let firstSeenTimestamp = try container.decode(Double.self, forKey: .first_seen)
+            first_seen = Date(timeIntervalSince1970: firstSeenTimestamp)
+            
+            let lastSeenTimestamp = try container.decode(Double.self, forKey: .last_seen)
+            last_seen = Date(timeIntervalSince1970: lastSeenTimestamp)
+            
+            available_operations = try container.decode([String].self, forKey: .available_operations)
         }
     }
+    
+    public enum NetworkError: Error {
+        case companyIdNotSet
+        case invalidURL
+        case noDataReceived
+        case invalidResponseFormat
+    }
 
-
+    // MARK: - Network Request Helper
     private func makeRequest(to endpoint: String, method: String, parameters: [String: Any], completion: @escaping (Result<Data, Error>) -> Void) {
         guard let url = URL(string: endpoint) else {
-            completion(.failure(NSError(domain: "NetworkManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])))
+            completion(.failure(NetworkError.invalidURL))
             return
         }
         
@@ -226,11 +267,19 @@ public class NetworkManager {
             request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
         }
         
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: parameters)
-        } catch {
-            completion(.failure(error))
-            return
+        if method == "POST" {
+            do {
+                request.httpBody = try JSONSerialization.data(withJSONObject: parameters)
+            } catch {
+                completion(.failure(error))
+                return
+            }
+        } else if method == "GET" && !parameters.isEmpty {
+            var components = URLComponents(url: url, resolvingAgainstBaseURL: true)
+            components?.queryItems = parameters.map { URLQueryItem(name: $0.key, value: "\($0.value)") }
+            if let url = components?.url {
+                request.url = url
+            }
         }
         
         URLSession.shared.dataTask(with: request) { data, response, error in
@@ -240,7 +289,7 @@ public class NetworkManager {
             }
             
             guard let data = data else {
-                completion(.failure(NSError(domain: "NetworkManager", code: 4, userInfo: [NSLocalizedDescriptionKey: "No data received"])))
+                completion(.failure(NetworkError.noDataReceived))
                 return
             }
             

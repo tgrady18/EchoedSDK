@@ -16,6 +16,13 @@ public struct Message: Codable, Identifiable {
     let options: [String]? // Optional
 }
 
+public enum TagType: String, Codable {
+    case number
+    case string
+    case timestamp
+    case boolean
+}
+
 public enum MessageType: String, Codable {
     case multiChoice
     case textInput
