@@ -49,7 +49,8 @@ public class NetworkManager {
         let parameters: [String: Any] = [
             "companyId": companyId,
             "anchorId": anchorId,
-            "userTags": userTags.getAllTagsForNetwork()
+            "userTags": userTags.getAllTagsForNetwork(),
+            "deviceId": EchoedSDK.shared.deviceManager.getDeviceId()
         ]
 
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
