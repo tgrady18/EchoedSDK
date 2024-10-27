@@ -6,6 +6,7 @@ public class EchoedSDK {
     
     public let networkManager: NetworkManager
     private let userTagManager: UserTagManager
+    public let deviceManager: DeviceManager  // New line
     public var userTags: UserTagManager {
         return userTagManager
     }
@@ -14,6 +15,7 @@ public class EchoedSDK {
     private init() {
         networkManager = NetworkManager()
         userTagManager = UserTagManager()
+        deviceManager = DeviceManager()  // New line
         messageManager = MessageManager()
     }
     
