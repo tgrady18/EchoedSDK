@@ -49,7 +49,8 @@ public class NetworkManager {
         let parameters: [String: Any] = [
             "companyId": companyId,
             "anchorId": anchorId,
-            "userTags": userTags.getAllTagsForNetwork()
+            "userTags": userTags.getAllTagsForNetwork(),
+            "deviceId": EchoedSDK.shared.deviceManager.getDeviceId()
         ]
 
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
@@ -61,6 +62,29 @@ public class NetworkManager {
                 } catch {
                     completion(.failure(error))
                 }
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+    
+    public func recordMessageDisplay(messageId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let companyId = companyId else {
+            completion(.failure(NetworkError.companyIdNotSet))
+            return
+        }
+        
+        let endpoint = baseURL + "recordMessageDisplay"
+        let parameters: [String: Any] = [
+            "companyId": companyId,
+            "messageId": messageId,
+            "deviceId": EchoedSDK.shared.deviceManager.getDeviceId()
+        ]
+        
+        makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
+            switch result {
+            case .success:
+                completion(.success(()))
             case .failure(let error):
                 completion(.failure(error))
             }

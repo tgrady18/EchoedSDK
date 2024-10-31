@@ -6,6 +6,14 @@ class MessageDisplayer {
     
     func display(_ message: Message, completion: @escaping (String) -> Void) {
         DispatchQueue.main.async {
+            EchoedSDK.shared.networkManager.recordMessageDisplay(messageId: message.id) { result in
+                           switch result {
+                           case .success:
+                               print("Display recorded successfully")
+                           case .failure(let error):
+                               print("Error recording display: \(error)")
+                           }
+                       }
             let view: AnyView
             switch message.type {
             case .multiChoice:
