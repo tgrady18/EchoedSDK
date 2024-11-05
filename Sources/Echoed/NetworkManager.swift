@@ -68,6 +68,29 @@ public class NetworkManager {
         }
     }
     
+    public func recordMessageDisplay(messageId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard let companyId = companyId else {
+            completion(.failure(NetworkError.companyIdNotSet))
+            return
+        }
+        
+        let endpoint = baseURL + "recordMessageDisplay"
+        let parameters: [String: Any] = [
+            "companyId": companyId,
+            "messageId": messageId,
+            "deviceId": EchoedSDK.shared.deviceManager.getDeviceId()
+        ]
+        
+        makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
+            switch result {
+            case .success:
+                completion(.success(()))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+    
     // MARK: - Anchor Methods
     public func fetchAnchors(completion: @escaping (Result<[String], Error>) -> Void) {
         guard let companyId = companyId else {
