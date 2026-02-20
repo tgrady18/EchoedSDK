@@ -8,7 +8,7 @@ public class NetworkManager {
     private let baseURL = "https://us-central1-echoed-ccedb.cloudfunctions.net/"
     private var apiKey: String?
     private var companyId: String?
-    
+
     public func initialize(withApiKey apiKey: String, companyId: String) {
         self.apiKey = apiKey
         self.companyId = companyId
@@ -121,7 +121,7 @@ public class NetworkManager {
             completion(.failure(NetworkError.companyIdNotSet))
             return
         }
-        
+
         let endpoint = baseURL + "recordAnchorHit"
         let parameters: [String: Any] = [
             "companyId": companyId,
@@ -195,7 +195,7 @@ public class NetworkManager {
             completion(.failure(NetworkError.companyIdNotSet))
             return
         }
-        
+
         let endpoint = baseURL + "sendMessageResponse"
         let parameters: [String: Any] = [
             "companyId": companyId,
