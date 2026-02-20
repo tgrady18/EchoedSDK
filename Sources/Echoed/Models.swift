@@ -26,6 +26,8 @@ public enum TagType: String, Codable {
 public enum MessageType: String, Codable {
     case multiChoice
     case textInput
+    case yesNo
+    case thumbsUpDown
 }
 
 
