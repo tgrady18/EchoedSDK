@@ -1,14 +1,6 @@
 # Echoed iOS SDK
 
-Collect feedback from your iOS users at key moments in their journey.
-
-## Overview
-
-The Echoed iOS SDK allows you to:
-- Display contextual feedback prompts to users
-- Collect responses and send them to your Echoed dashboard
-- Track user engagement with your messages
-- Analyze feedback patterns over time
+Drop-in user feedback for iOS — show contextual prompts at key moments and collect responses to your [Echoed dashboard](https://echoed-feedback.com).
 
 ## Requirements
 
@@ -18,28 +10,20 @@ The Echoed iOS SDK allows you to:
 
 ## Installation
 
-### Swift Package Manager (Recommended)
+Add via Swift Package Manager:
 
 1. In Xcode, go to **File > Add Packages...**
 2. Enter the repository URL:
    ```
-   https://github.com/your-org/EchoedSDK.git
+   https://github.com/tgrady18/EchoedSDK.git
    ```
-3. Select the version you want to use
-4. Click **Add Package**
-
-### Manual Installation
-
-1. Download the latest release
-2. Drag `Echoed.xcframework` into your Xcode project
-3. Ensure "Copy items if needed" is checked
-4. Add to your target's "Frameworks, Libraries, and Embedded Content"
+3. Select your version and click **Add Package**
 
 ## Quick Start
 
-### 1. Initialize the SDK
+### 1. Initialize
 
-In your `AppDelegate.swift` or App struct:
+In your App struct or `AppDelegate`:
 
 ```swift
 import Echoed
@@ -47,7 +31,6 @@ import Echoed
 @main
 struct YourApp: App {
     init() {
-        // Initialize Echoed with your credentials
         EchoedSDK.shared.initialize(
             apiKey: "YOUR_API_KEY",
             companyId: "YOUR_COMPANY_ID"
@@ -62,72 +45,11 @@ struct YourApp: App {
 }
 ```
 
-**Find your credentials:**
-1. Log in to your Echoed dashboard
-2. Go to Settings
-3. Copy your API Key and Company ID
+Find your API Key and Company ID in [Settings](https://echoed-feedback.com/companyConfig).
 
-### 2. Display Messages
+### 2. Hit an Anchor
 
-Show messages at key moments in your app:
-
-```swift
-import Echoed
-import SwiftUI
-
-struct OnboardingView: View {
-    var body: some View {
-        VStack {
-            // Your onboarding content
-            Text("Welcome!")
-        }
-        .onAppear {
-            // Show message when onboarding completes
-            EchoedSDK.shared.hitAnchor("onboarding_complete")
-        }
-    }
-}
-```
-
-### 3. Set User Tags (Optional)
-
-Add context about your users with tags:
-
-```swift
-// After user logs in
-EchoedSDK.shared.setUserTag("email", value: "user@example.com", type: .string)
-EchoedSDK.shared.setUserTag("plan", value: "premium", type: .string)
-EchoedSDK.shared.setUserTag("signupDate", value: "2024-01-15", type: .string)
-```
-
-## Core Concepts
-
-### Anchors
-
-**Anchors** are specific locations in your app where messages can be displayed. Examples:
-- `onboarding_complete` - After user finishes onboarding
-- `first_purchase` - After user's first purchase
-- `feature_discovery` - When user discovers a new feature
-- `checkout_abandoned` - When user abandons checkout
-
-### Messages
-
-Messages are created in the Echoed dashboard and linked to anchors. They can be:
-- **Text prompts** - Simple text questions
-- **Rating requests** - Star ratings or numeric scales
-- **Multiple choice** - Predefined options
-- **Open-ended** - Free-form text responses
-
-### Display Rules
-
-Control when and how often messages are shown:
-- **Frequency** - Once per session, daily, weekly, etc.
-- **User segments** - Target specific user groups
-- **A/B testing** - Test different message variations
-
-## Common Use Cases
-
-### Example 1: Post-Purchase Feedback
+Anchors are trigger points in your app where feedback can appear. Call `hitAnchor` and the SDK handles the rest — it checks the backend for any messages configured for that anchor, and displays them if found.
 
 ```swift
 struct CheckoutSuccessView: View {
@@ -138,240 +60,170 @@ struct CheckoutSuccessView: View {
             Text("Order Confirmed!")
         }
         .onAppear {
-            // Ask about purchase experience
-            Echoed.showMessage(anchorId: "purchase_complete")
+            EchoedSDK.shared.hitAnchor("post_purchase")
         }
     }
 }
 ```
 
-### Example 2: Feature Feedback
+Anchor IDs (e.g. `"post_purchase"`) are strings you define — they must match what you've configured in [Messages](https://echoed-feedback.com/messages). If no message is configured for an anchor, nothing is displayed.
+
+### 3. Set User Tags (Optional)
+
+Tags attach metadata to the current user for targeting rules. The `type` parameter tells the SDK how to validate and store the value.
 
 ```swift
-struct NewFeatureView: View {
-    @State private var featureUsed = false
-
-    var body: some View {
-        VStack {
-            // Your new feature UI
-        }
-        .onChange(of: featureUsed) { used in
-            if used {
-                // After user tries the feature
-                Echoed.showMessage(anchorId: "new_feature_used")
-            }
-        }
-    }
-}
+EchoedSDK.shared.setUserTag("plan", value: "pro", type: .string)
+EchoedSDK.shared.setUserTag("purchase_count", value: 5, type: .number)
+EchoedSDK.shared.setUserTag("is_beta", value: true, type: .boolean)
+EchoedSDK.shared.setUserTag("subscribed_at", value: Date(), type: .timestamp)
 ```
 
-### Example 3: App Rating
+Tags are persisted locally (UserDefaults) and synced to the backend automatically.
+
+## Core Concepts
+
+### Anchors
+
+An **anchor** is a named trigger point in your app. When you call `hitAnchor`, the SDK:
+
+1. Records the hit to the backend
+2. Fetches any messages linked to that anchor (filtered by user tags and targeting rules)
+3. Displays matched messages as a modal overlay
+
+You create anchors and link messages to them in the [Messages](https://echoed-feedback.com/messages) page.
+
+### Messages
+
+Messages are [created in the dashboard](https://echoed-feedback.com/messages/create) and displayed by the SDK. Two types are supported:
+
+| Type | What the user sees |
+|---|---|
+| **Text Input** | A prompt with a title, description, free-form text field, and submit button |
+| **Multiple Choice** | A prompt with a title, description, scrollable option picker, and submit button |
+
+Messages appear as a centered modal with a semi-transparent backdrop. The UI adapts to light/dark mode automatically. Users can dismiss via the X button or submit a response.
+
+Responses are sent to the backend automatically — no callback is needed on the developer side.
+
+### User Tags
+
+Tags are key-value pairs attached to the user. They serve two purposes:
+
+- **Targeting** — The dashboard uses tag conditions to control which users see which messages
+- **Context** — Tags are included with responses so you can segment feedback
+
+Available tag types:
+
+| TagType | Swift types accepted | Example |
+|---|---|---|
+| `.string` | `String` | `"premium"` |
+| `.number` | `Int`, `Double` | `42`, `3.14` |
+| `.boolean` | `Bool` | `true` |
+| `.timestamp` | `Date`, `TimeInterval` | `Date()`, `1700000000.0` |
+
+### Automatic Tags
+
+The SDK tracks these tags internally. They're set automatically and **cannot be removed**:
+
+| Tag | Type | Description |
+|---|---|---|
+| `first_session_time` | `.timestamp` | When the SDK was first initialized on this device |
+| `session_count` | `.number` | Number of app sessions (incremented when the app returns to foreground after 5+ seconds in background) |
+| `last_session_time` | `.timestamp` | Timestamp of the most recent session |
+
+These appear alongside your custom tags in `getAllUserTags()` and are sent with network requests.
+
+### Device ID
+
+The SDK generates and persists a unique device identifier (UUID) in UserDefaults. This ID is sent with message fetch and display requests for tracking.
 
 ```swift
-struct MainView: View {
-    @AppStorage("appLaunchCount") var launchCount = 0
-
-    var body: some View {
-        ContentView()
-            .onAppear {
-                launchCount += 1
-
-                // Ask for rating after 10 launches
-                if launchCount == 10 {
-                    Echoed.showMessage(anchorId: "app_rating_request")
-                }
-            }
-    }
-}
+let deviceId = EchoedSDK.shared.deviceManager.getDeviceId()
 ```
 
-## Advanced Usage
-
-### Custom Message Display
-
-Customize how messages appear in your app:
-
-```swift
-Echoed.configure { config in
-    config.messagePosition = .bottom
-    config.animationDuration = 0.3
-    config.backgroundColor = .black
-    config.textColor = .white
-}
-```
-
-### Handling Message Responses
-
-Get notified when users respond:
-
-```swift
-Echoed.onMessageResponse { response in
-    print("User responded: \(response.message)")
-
-    // Track in your analytics
-    Analytics.track("feedback_submitted", properties: [
-        "message_id": response.messageId,
-        "response_length": response.message.count
-    ])
-}
-```
-
-### Offline Support
-
-The SDK automatically queues messages and responses when offline:
-
-```swift
-// Responses are automatically synced when connection returns
-Echoed.showMessage(anchorId: "offline_test")
-// Response will be sent once online
-```
+The device ID resets if the app is uninstalled and reinstalled.
 
 ## API Reference
 
 ### Initialization
 
 ```swift
-Echoed.initialize(companyId: String)
+EchoedSDK.shared.initialize(apiKey: String, companyId: String)
 ```
 
-### Display Messages
+Call once at app launch before using any other SDK methods.
+
+### Anchors
 
 ```swift
-// Show message at anchor point
-Echoed.showMessage(anchorId: String)
-
-// Show with additional context
-Echoed.showMessage(anchorId: String, context: [String: Any])
+// Trigger an anchor — fetches and displays any matching messages
+EchoedSDK.shared.hitAnchor(_ anchorId: String)
 ```
 
-### User Identification
+### User Tags
 
 ```swift
-// Identify user
-Echoed.identify(userId: String, properties: [String: Any])
+// Set a tag (creates or overwrites)
+EchoedSDK.shared.setUserTag(_ key: String, value: Any, type: UserTagManager.TagType)
 
-// Clear user identity (on logout)
-Echoed.clearIdentity()
+// Read tags
+EchoedSDK.shared.getUserTagValue(_ key: String) -> Any?
+EchoedSDK.shared.getUserTagType(_ key: String) -> UserTagManager.TagType?
+EchoedSDK.shared.getAllUserTags() -> [String: Any]
+
+// Remove a single custom tag (internal tags cannot be removed)
+EchoedSDK.shared.removeUserTag(_ key: String)
+
+// Remove all custom tags (internal tags are preserved)
+EchoedSDK.shared.clearAllUserTags()
 ```
 
-### Event Tracking
+### Device
 
 ```swift
-// Track custom event
-Echoed.track(event: String, properties: [String: Any])
+// Get the persistent device UUID
+EchoedSDK.shared.deviceManager.getDeviceId() -> String
 ```
 
-### Configuration
+### Debug
 
 ```swift
-Echoed.configure { config in
-    config.debugMode = true
-    config.messagePosition = .bottom
-    config.autoTrackScreenViews = true
-}
-```
-
-## Testing
-
-### Test Mode
-
-Enable test mode to see all messages regardless of display rules:
-
-```swift
-#if DEBUG
-Echoed.configure { config in
-    config.debugMode = true
-}
-#endif
-```
-
-### Preview Messages
-
-Preview messages before deploying:
-
-```swift
-// In your dashboard, create a test message
-// Set it to only show for test users
-
-#if DEBUG
-Echoed.identify(userId: "test_user", properties: [
-    "is_tester": true
-])
-#endif
+// Print all tags (custom + internal) to the console
+EchoedSDK.shared.printAllTags()
 ```
 
 ## Troubleshooting
 
-### Messages Not Showing
+### Messages not showing
 
-1. **Check Company ID**: Verify your company ID is correct
-2. **Check Anchor ID**: Ensure the anchor ID matches what's in your dashboard
-3. **Check Display Rules**: Verify the message's display rules allow it to show
-4. **Check Debug Logs**: Enable debug mode to see detailed logs
+1. **Verify credentials** — Confirm your `apiKey` and `companyId` are correct
+2. **Check the anchor ID** — The string passed to `hitAnchor` must exactly match what's configured in the dashboard
+3. **Check targeting rules** — Your user's tags may not satisfy the message's conditions
+4. **Check the console** — The SDK prints errors for network failures and missing configuration
+5. **Confirm a UIWindowScene is available** — The SDK needs an active window scene to present the overlay. Don't call `hitAnchor` before the app's UI has loaded.
 
-```swift
-Echoed.configure { config in
-    config.debugMode = true
-}
-```
+### Responses not saving
 
-### Responses Not Saving
+1. **Check network connectivity** — Responses are sent immediately on submit; there is no offline queue
+2. **Check console output** — Look for "Error sending response" messages
 
-1. **Check Network**: Verify the device has internet connectivity
-2. **Check Firebase**: Ensure Firebase is properly configured
-3. **Check Logs**: Look for error messages in the console
+### Build issues
 
-### Build Issues
+- **Update packages**: File > Packages > Update to Latest Package Versions
+- **Reset cache**: File > Packages > Reset Package Caches
 
-**Swift Package Manager:**
-- Update packages: **File > Packages > Update to Latest Package Versions**
-- Reset package cache: **File > Packages > Reset Package Caches**
+## Dashboard
 
-**Manual Installation:**
-- Verify framework is added to "Frameworks, Libraries, and Embedded Content"
-- Check "Embed & Sign" is selected
+This SDK is the client-side half of Echoed. All message creation, anchor configuration, targeting rules, and response analytics live in the web dashboard at [echoed-feedback.com](https://echoed-feedback.com).
 
-## Best Practices
-
-### Do's ✅
-
-- Show messages at natural moments in the user journey
-- Keep message frequency reasonable (not too annoying)
-- Use clear, concise language in your prompts
-- Test messages thoroughly before deploying
-- Monitor response rates in your dashboard
-
-### Don'ts ❌
-
-- Don't show messages immediately on app launch
-- Don't interrupt critical user flows
-- Don't ask the same question repeatedly
-- Don't use technical jargon in messages
-- Don't ignore user feedback
-
-## Privacy & Security
-
-- User data is encrypted in transit and at rest
-- No personal information is collected without explicit user action
-- Users can opt out of feedback collection
-- GDPR and CCPA compliant
-
-## Support
-
-- **Documentation**: [docs.echoed.app](https://docs.echoed.app)
-- **Email**: support@echoed.app
-- **GitHub Issues**: [github.com/your-org/EchoedSDK/issues](https://github.com/your-org/EchoedSDK/issues)
+From the dashboard you can:
+- [Create and edit feedback messages](https://echoed-feedback.com/messages/create) (text input or multiple choice)
+- [Manage messages](https://echoed-feedback.com/messages) and link them to anchor IDs
+- [View collected responses](https://echoed-feedback.com/responses) and analyze feedback
+- [Browse insights](https://echoed-feedback.com/insights) generated from response data
+- Find your API Key and Company ID in [Settings](https://echoed-feedback.com/companyConfig)
 
 ## License
 
 Proprietary - All rights reserved
-
-## Changelog
-
-### v1.0.0 (Current)
-- Initial release
-- Message display
-- Response collection
-- User identification
-- Event tracking
-- Offline support
