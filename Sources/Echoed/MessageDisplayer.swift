@@ -93,14 +93,15 @@ struct ModalContainer<Content: View>: View {
         ZStack {
             Color.black.opacity(isPresented ? 0.5 : 0)
                 .ignoresSafeArea()
-                .animation(.easeOut(duration: 0.25), value: isPresented)
 
             content()
                 .scaleEffect(isPresented ? 1 : 0.9)
                 .opacity(isPresented ? 1 : 0)
-                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isPresented)
         }
-        .onAppear { isPresented = true }
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isPresented)
+        .onAppear {
+            DispatchQueue.main.async { isPresented = true }
+        }
     }
 }
 
@@ -120,11 +121,13 @@ struct BannerContainer<Content: View>: View {
                 content()
                     .padding(.top, 8)
                     .offset(y: isPresented ? 0 : -120)
-                    .animation(.spring(response: 0.4, dampingFraction: 0.75), value: isPresented)
                 Spacer()
             }
         }
-        .onAppear { isPresented = true }
+        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: isPresented)
+        .onAppear {
+            DispatchQueue.main.async { isPresented = true }
+        }
     }
 }
 
