@@ -46,15 +46,16 @@ class MessageDisplayer {
                 ))
             }
 
-            // Wrap in animated container
+            // Wrap in animated container — must capture inner view before reassigning
+            let innerView = view
             if isBannerType {
                 let dismissAction = { self.dismiss() }
                 view = AnyView(
-                    BannerContainer(onDismiss: dismissAction) { view }
+                    BannerContainer(onDismiss: dismissAction) { innerView }
                 )
             } else {
                 view = AnyView(
-                    ModalContainer { view }
+                    ModalContainer { innerView }
                 )
             }
 
