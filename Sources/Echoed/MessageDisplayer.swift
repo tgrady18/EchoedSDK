@@ -106,11 +106,12 @@ struct ModalContainer<Content: View>: View {
     }
 }
 
-/// Wraps banner views (yesNo, thumbsUpDown) with a slide-down animation and tap-to-dismiss.
+/// Wraps banner views (yesNo, thumbsUpDown) with slide-down animation, tap-to-dismiss, and swipe-up-to-dismiss.
 struct BannerContainer<Content: View>: View {
     let onDismiss: () -> Void
     let content: () -> Content
     @State private var isPresented = false
+    @State private var dragOffset: CGFloat = 0
 
     var body: some View {
         ZStack {
@@ -121,7 +122,22 @@ struct BannerContainer<Content: View>: View {
             VStack {
                 content()
                     .padding(.top, 8)
-                    .offset(y: isPresented ? 0 : -120)
+                    .offset(y: (isPresented ? 0 : -120) + min(dragOffset, 0))
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                dragOffset = value.translation.height
+                            }
+                            .onEnded { value in
+                                if value.translation.height < -40 {
+                                    onDismiss()
+                                } else {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        dragOffset = 0
+                                    }
+                                }
+                            }
+                    )
                 Spacer()
             }
         }
@@ -231,31 +247,28 @@ struct MultiChoiceMessageView: View {
                     .padding(.horizontal, 20)
             }
 
-            // ScrollView so all options are reachable, but only scrolls when needed
-            ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(options, id: \.self) { option in
-                        Button(action: {
-                            let generator = UISelectionFeedbackGenerator()
-                            generator.selectionChanged()
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                selectedOption = option
-                            }
-                        }) {
-                            HStack(spacing: 12) {
-                                Image(systemName: selectedOption == option ? "circle.inset.filled" : "circle")
-                                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                                Text(option)
-                                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                                Spacer()
-                            }
-                            .padding(.vertical, 12)
-                            .padding(.horizontal, 20)
+            VStack(spacing: 0) {
+                ForEach(options, id: \.self) { option in
+                    Button(action: {
+                        let generator = UISelectionFeedbackGenerator()
+                        generator.selectionChanged()
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            selectedOption = option
                         }
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: selectedOption == option ? "circle.inset.filled" : "circle")
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                            Text(option)
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                            Spacer()
+                        }
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 20)
                     }
                 }
             }
-            .frame(maxHeight: 260) // Scrolls if many options, fits if few
+            .fixedSize(horizontal: false, vertical: true)
 
             Button(action: {
                 if let selectedOption = selectedOption {
