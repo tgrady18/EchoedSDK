@@ -3,18 +3,21 @@ import SwiftUI
 class MessageDisplayer {
     static let shared = MessageDisplayer()
     private var window: UIWindow?
-    
+
     func display(_ message: Message, completion: @escaping (String) -> Void) {
         DispatchQueue.main.async {
             EchoedSDK.shared.networkManager.recordMessageDisplay(messageId: message.id) { result in
-                           switch result {
-                           case .success:
-                               print("Display recorded successfully")
-                           case .failure(let error):
-                               print("Error recording display: \(error)")
-                           }
-                       }
+                switch result {
+                case .success:
+                    print("Display recorded successfully")
+                case .failure(let error):
+                    print("Error recording display: \(error)")
+                }
+            }
+
+            let isBannerType = message.type == .yesNo || message.type == .thumbsUpDown
             var view: AnyView
+
             switch message.type {
             case .multiChoice:
                 view = AnyView(MultiChoiceMessageView(
@@ -43,46 +46,85 @@ class MessageDisplayer {
                 ))
             }
 
-            let isBannerType = message.type == .yesNo || message.type == .thumbsUpDown
-
-            // For banner types, wrap to pin to top of screen with tap-to-dismiss background
+            // Wrap in animated container
             if isBannerType {
                 let dismissAction = { self.dismiss() }
                 view = AnyView(
-                    ZStack {
-                        Color.clear
-                            .contentShape(Rectangle())
-                            .onTapGesture { dismissAction() }
-                        VStack {
-                            view
-                                .padding(.top, 60)
-                            Spacer()
-                        }
-                    }
+                    BannerContainer(onDismiss: dismissAction) { view }
+                )
+            } else {
+                view = AnyView(
+                    ModalContainer { view }
                 )
             }
 
             let hostingController = UIHostingController(rootView: view)
-            hostingController.view.backgroundColor = UIColor.clear // Ensure transparency
+            hostingController.view.backgroundColor = UIColor.clear
 
             if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
                 self.window = UIWindow(windowScene: scene)
                 self.window?.rootViewController = hostingController
                 self.window?.windowLevel = UIWindow.Level.alert + 1
-                self.window?.backgroundColor = isBannerType ? UIColor.clear : UIColor.black.withAlphaComponent(0.5)
+                self.window?.backgroundColor = .clear
                 self.window?.makeKeyAndVisible()
             } else {
                 print("No active UIWindowScene found.")
             }
         }
     }
-    
+
     private func dismiss() {
         DispatchQueue.main.async {
             print("Dismiss called")
             self.window?.isHidden = true
             self.window = nil
         }
+    }
+}
+
+// MARK: - Animated Containers
+
+/// Wraps modal views (textInput, multiChoice) with a fade-in backdrop and scale animation.
+struct ModalContainer<Content: View>: View {
+    let content: () -> Content
+    @State private var isPresented = false
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(isPresented ? 0.5 : 0)
+                .ignoresSafeArea()
+                .animation(.easeOut(duration: 0.25), value: isPresented)
+
+            content()
+                .scaleEffect(isPresented ? 1 : 0.9)
+                .opacity(isPresented ? 1 : 0)
+                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isPresented)
+        }
+        .onAppear { isPresented = true }
+    }
+}
+
+/// Wraps banner views (yesNo, thumbsUpDown) with a slide-down animation and tap-to-dismiss.
+struct BannerContainer<Content: View>: View {
+    let onDismiss: () -> Void
+    let content: () -> Content
+    @State private var isPresented = false
+
+    var body: some View {
+        ZStack {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { onDismiss() }
+
+            VStack {
+                content()
+                    .padding(.top, 8)
+                    .offset(y: isPresented ? 0 : -120)
+                    .animation(.spring(response: 0.4, dampingFraction: 0.75), value: isPresented)
+                Spacer()
+            }
+        }
+        .onAppear { isPresented = true }
     }
 }
 
@@ -145,10 +187,10 @@ struct TextInputMessageView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
         }
-        .background(colorScheme == .dark ? Color.black : Color.white) // High contrast background
+        .background(colorScheme == .dark ? Color.black : Color.white)
         .cornerRadius(20)
-        .padding(20)
-        .frame(maxWidth: 350)
+        .padding(.horizontal, 24)
+        .frame(maxWidth: 380)
     }
 }
 
@@ -159,7 +201,7 @@ struct MultiChoiceMessageView: View {
     let onDismiss: () -> Void
     @State private var selectedOption: String?
     @Environment(\.colorScheme) var colorScheme
-    
+
     var body: some View {
         VStack(spacing: 20) {
             HStack {
@@ -170,51 +212,61 @@ struct MultiChoiceMessageView: View {
                         .padding()
                 }
             }
-            
+
             Text(message.title)
                 .font(.system(size: 24, weight: .bold))
-                .foregroundColor(colorScheme == .dark ? .white : .black) // High contrast
+                .foregroundColor(colorScheme == .dark ? .white : .black)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 20)
-            
-            Text(message.content)
-                .font(.body)
-                .foregroundColor(.gray)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 20)
-            
-            VStack(spacing: 0) {
-                ForEach(options, id: \.self) { option in
-                    Button(action: { selectedOption = option }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: selectedOption == option ? "circle.inset.filled" : "circle")
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
-                            Text(option)
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
-                            Spacer()
+
+            if !message.content.isEmpty {
+                Text(message.content)
+                    .font(.body)
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+            }
+
+            // ScrollView so all options are reachable, but only scrolls when needed
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(options, id: \.self) { option in
+                        Button(action: {
+                            let generator = UISelectionFeedbackGenerator()
+                            generator.selectionChanged()
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                selectedOption = option
+                            }
+                        }) {
+                            HStack(spacing: 12) {
+                                Image(systemName: selectedOption == option ? "circle.inset.filled" : "circle")
+                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                                Text(option)
+                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                                Spacer()
+                            }
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 20)
                         }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 20)
                     }
                 }
             }
-            
+            .frame(maxHeight: 260) // Scrolls if many options, fits if few
+
             Button(action: {
                 if let selectedOption = selectedOption {
-                    // Haptic feedback
                     let generator = UIImpactFeedbackGenerator(style: .medium)
                     generator.impactOccurred()
-                    
                     onResponse(selectedOption)
                 }
                 onDismiss()
             }) {
                 Text("SUBMIT")
                     .font(.headline)
-                    .foregroundColor(colorScheme == .dark ? .black : .white) // High contrast
+                    .foregroundColor(colorScheme == .dark ? .black : .white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(colorScheme == .dark ? Color.white : Color.black) // High contrast
+                    .background(colorScheme == .dark ? Color.white : Color.black)
                     .cornerRadius(10)
             }
             .disabled(selectedOption == nil)
@@ -222,10 +274,10 @@ struct MultiChoiceMessageView: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
         }
-        .background(colorScheme == .dark ? Color.black : Color.white) // High contrast background
+        .background(colorScheme == .dark ? Color.black : Color.white)
         .cornerRadius(20)
-        .padding(20)
-        .frame(maxWidth: 350)
+        .padding(.horizontal, 24)
+        .frame(maxWidth: 380)
     }
 }
 
@@ -244,27 +296,23 @@ struct YesNoMessageView: View {
 
             Spacer()
 
-            Button(action: {
-                let generator = UIImpactFeedbackGenerator(style: .medium)
-                generator.impactOccurred()
-                onResponse("no")
-                onDismiss()
-            }) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 24))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-            }
+            BannerActionButton(
+                systemName: "xmark",
+                colorScheme: colorScheme,
+                action: {
+                    onResponse("no")
+                    onDismiss()
+                }
+            )
 
-            Button(action: {
-                let generator = UIImpactFeedbackGenerator(style: .medium)
-                generator.impactOccurred()
-                onResponse("yes")
-                onDismiss()
-            }) {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 24))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-            }
+            BannerActionButton(
+                systemName: "checkmark",
+                colorScheme: colorScheme,
+                action: {
+                    onResponse("yes")
+                    onDismiss()
+                }
+            )
         }
         .padding(16)
         .background(colorScheme == .dark ? Color(UIColor.systemGray6) : Color.white)
@@ -289,33 +337,59 @@ struct ThumbsUpDownMessageView: View {
 
             Spacer()
 
-            Button(action: {
-                let generator = UIImpactFeedbackGenerator(style: .medium)
-                generator.impactOccurred()
-                onResponse("thumbsDown")
-                onDismiss()
-            }) {
-                Image(systemName: "hand.thumbsdown")
-                    .font(.system(size: 24))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-            }
+            BannerActionButton(
+                systemName: "hand.thumbsdown",
+                colorScheme: colorScheme,
+                action: {
+                    onResponse("thumbsDown")
+                    onDismiss()
+                }
+            )
 
-            Button(action: {
-                let generator = UIImpactFeedbackGenerator(style: .medium)
-                generator.impactOccurred()
-                onResponse("thumbsUp")
-                onDismiss()
-            }) {
-                Image(systemName: "hand.thumbsup")
-                    .font(.system(size: 24))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-            }
+            BannerActionButton(
+                systemName: "hand.thumbsup",
+                colorScheme: colorScheme,
+                action: {
+                    onResponse("thumbsUp")
+                    onDismiss()
+                }
+            )
         }
         .padding(16)
         .background(colorScheme == .dark ? Color(UIColor.systemGray6) : Color.white)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
         .padding(.horizontal, 16)
+    }
+}
+
+// MARK: - Shared banner button with tap scale + haptic
+
+struct BannerActionButton: View {
+    let systemName: String
+    let colorScheme: ColorScheme
+    let action: () -> Void
+    @State private var isPressed = false
+
+    var body: some View {
+        Button(action: {
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
+            action()
+        }) {
+            Image(systemName: systemName)
+                .font(.system(size: 22, weight: .medium))
+                .foregroundColor(colorScheme == .dark ? .white : .black)
+                .frame(width: 40, height: 40)
+                .contentShape(Rectangle())
+                .scaleEffect(isPressed ? 0.85 : 1.0)
+                .animation(.easeInOut(duration: 0.1), value: isPressed)
+        }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
     }
 }
 
