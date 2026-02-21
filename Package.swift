@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "Echoed",
     platforms: [
-        .iOS(.v13)
+        .iOS(.v16)
     ],
     products: [
         .library(
