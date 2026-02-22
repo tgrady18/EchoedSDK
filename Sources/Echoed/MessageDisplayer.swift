@@ -148,69 +148,127 @@ struct BannerContainer<Content: View>: View {
     }
 }
 
+// MARK: - Shared Components
+
+/// Brief thank-you shown after submitting feedback in modal views.
+struct ThankYouView: View {
+    @Environment(\.colorScheme) var colorScheme
+    @State private var checkScale: CGFloat = 0.3
+    @State private var checkOpacity: CGFloat = 0
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 44))
+                .foregroundColor(.green)
+                .scaleEffect(checkScale)
+                .opacity(checkOpacity)
+            Text("Thanks!")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(colorScheme == .dark ? .white : .black)
+                .opacity(checkOpacity)
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+                checkScale = 1.0
+                checkOpacity = 1.0
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+            }
+        }
+    }
+}
+
+/// Press-scale effect for buttons.
+struct ScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.93 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Modal Views
+
 struct TextInputMessageView: View {
     let message: Message
     let onResponse: (String) -> Void
     let onDismiss: () -> Void
     @State private var userInput: String = ""
+    @State private var submitted = false
     @Environment(\.colorScheme) var colorScheme
-    
+
+    private var isFormValid: Bool { !userInput.isEmpty }
+
     var body: some View {
         VStack(spacing: 20) {
-            HStack {
-                Spacer()
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark")
-                        .foregroundColor(.gray)
-                        .padding()
-                }
-            }
-            
-            Text(message.title)
-                .font(.system(size: 24, weight: .bold))
-                .foregroundColor(colorScheme == .dark ? .white : .black) // High contrast
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 20)
-            
-            Text(message.content)
-                .font(.body)
-                .foregroundColor(.gray)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 20)
-            
-            TextField("Enter your response", text: $userInput)
-                .padding()
-                .background(Color(UIColor.systemGray5))
-                .foregroundColor(colorScheme == .dark ? .white : .black)
-                .keyboardType(.default)
-                .cornerRadius(10)
-                .padding(.horizontal, 20)
-            
-            Button(action: {
-                // Haptic feedback
-                let generator = UIImpactFeedbackGenerator(style: .medium)
-                generator.impactOccurred()
-                
-                onResponse(userInput)
-                onDismiss()
-            }) {
-                Text("SUBMIT")
-                    .font(.headline)
-                    .foregroundColor(colorScheme == .dark ? .black : .white) // High contrast
+            if submitted {
+                ThankYouView()
                     .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+            } else {
+                HStack {
+                    Spacer()
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark")
+                            .foregroundColor(.gray)
+                            .padding()
+                    }
+                }
+
+                Text(message.title)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+
+                Text(message.content)
+                    .font(.body)
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+
+                TextField("Enter your response", text: $userInput)
                     .padding()
-                    .background(colorScheme == .dark ? Color.white : Color.black) // High contrast
+                    .background(Color(UIColor.systemGray5))
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .keyboardType(.default)
                     .cornerRadius(10)
+                    .padding(.horizontal, 20)
+
+                Button(action: submit) {
+                    Text("SUBMIT")
+                        .font(.headline)
+                        .foregroundColor(colorScheme == .dark ? .black : .white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(colorScheme == .dark ? Color.white : Color.black)
+                        .cornerRadius(10)
+                }
+                .buttonStyle(ScaleButtonStyle())
+                .disabled(!isFormValid)
+                .opacity(isFormValid ? 1.0 : 0.5)
+                .scaleEffect(isFormValid ? 1.0 : 0.97)
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isFormValid)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
             }
-            .disabled(userInput.isEmpty)
-            .opacity(userInput.isEmpty ? 0.5 : 1.0)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 20)
         }
+        .animation(.easeInOut(duration: 0.25), value: submitted)
         .background(colorScheme == .dark ? Color.black : Color.white)
         .cornerRadius(20)
         .padding(.horizontal, 24)
         .frame(maxWidth: 380)
+    }
+
+    private func submit() {
+        onResponse(userInput)
+        withAnimation { submitted = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            onDismiss()
+        }
     }
 }
 
@@ -220,89 +278,107 @@ struct MultiChoiceMessageView: View {
     let onResponse: (String) -> Void
     let onDismiss: () -> Void
     @State private var selectedOption: String?
+    @State private var submitted = false
     @Environment(\.colorScheme) var colorScheme
+
+    private var isFormValid: Bool { selectedOption != nil }
 
     var body: some View {
         VStack(spacing: 20) {
-            HStack {
-                Spacer()
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark")
-                        .foregroundColor(.gray)
-                        .padding()
-                }
-            }
-
-            Text(message.title)
-                .font(.system(size: 24, weight: .bold))
-                .foregroundColor(colorScheme == .dark ? .white : .black)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 20)
-
-            if !message.content.isEmpty {
-                Text(message.content)
-                    .font(.body)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 20)
-            }
-
-            VStack(spacing: 0) {
-                ForEach(options, id: \.self) { option in
-                    Button(action: {
-                        let generator = UISelectionFeedbackGenerator()
-                        generator.selectionChanged()
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            selectedOption = option
-                        }
-                    }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: selectedOption == option ? "circle.inset.filled" : "circle")
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
-                            Text(option)
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
-                            Spacer()
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 20)
+            if submitted {
+                ThankYouView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+            } else {
+                HStack {
+                    Spacer()
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark")
+                            .foregroundColor(.gray)
+                            .padding()
                     }
                 }
-            }
-            .fixedSize(horizontal: false, vertical: true)
 
-            Button(action: {
-                if let selectedOption = selectedOption {
-                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                    generator.impactOccurred()
-                    onResponse(selectedOption)
+                Text(message.title)
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+
+                if !message.content.isEmpty {
+                    Text(message.content)
+                        .font(.body)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
                 }
-                onDismiss()
-            }) {
-                Text("SUBMIT")
-                    .font(.headline)
-                    .foregroundColor(colorScheme == .dark ? .black : .white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(colorScheme == .dark ? Color.white : Color.black)
-                    .cornerRadius(10)
+
+                VStack(spacing: 0) {
+                    ForEach(options, id: \.self) { option in
+                        Button(action: {
+                            let generator = UISelectionFeedbackGenerator()
+                            generator.selectionChanged()
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                selectedOption = option
+                            }
+                        }) {
+                            HStack(spacing: 12) {
+                                Image(systemName: selectedOption == option ? "circle.inset.filled" : "circle")
+                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                                Text(option)
+                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                                Spacer()
+                            }
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 20)
+                        }
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+
+                Button(action: submit) {
+                    Text("SUBMIT")
+                        .font(.headline)
+                        .foregroundColor(colorScheme == .dark ? .black : .white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(colorScheme == .dark ? Color.white : Color.black)
+                        .cornerRadius(10)
+                }
+                .buttonStyle(ScaleButtonStyle())
+                .disabled(!isFormValid)
+                .opacity(isFormValid ? 1.0 : 0.5)
+                .scaleEffect(isFormValid ? 1.0 : 0.97)
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isFormValid)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
             }
-            .disabled(selectedOption == nil)
-            .opacity(selectedOption == nil ? 0.5 : 1.0)
-            .padding(.horizontal, 20)
-            .padding(.bottom, 20)
         }
+        .animation(.easeInOut(duration: 0.25), value: submitted)
         .background(colorScheme == .dark ? Color.black : Color.white)
         .cornerRadius(20)
         .padding(.horizontal, 24)
         .frame(maxWidth: 380)
     }
+
+    private func submit() {
+        guard let selectedOption = selectedOption else { return }
+        onResponse(selectedOption)
+        withAnimation { submitted = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            onDismiss()
+        }
+    }
 }
+
+// MARK: - Banner Views
 
 struct YesNoMessageView: View {
     let message: Message
     let onResponse: (String) -> Void
     let onDismiss: () -> Void
     @Environment(\.colorScheme) var colorScheme
+    @State private var tapped: String?
 
     var body: some View {
         HStack(spacing: 16) {
@@ -313,29 +389,40 @@ struct YesNoMessageView: View {
 
             Spacer()
 
-            BannerActionButton(
-                systemName: "xmark",
-                colorScheme: colorScheme,
-                action: {
-                    onResponse("no")
-                    onDismiss()
-                }
-            )
+            bannerIcon("xmark", filled: "xmark.circle.fill", response: "no")
+                .opacity(tapped == nil || tapped == "no" ? 1 : 0.3)
 
-            BannerActionButton(
-                systemName: "checkmark",
-                colorScheme: colorScheme,
-                action: {
-                    onResponse("yes")
-                    onDismiss()
-                }
-            )
+            bannerIcon("checkmark", filled: "checkmark.circle.fill", response: "yes")
+                .opacity(tapped == nil || tapped == "yes" ? 1 : 0.3)
         }
+        .animation(.easeInOut(duration: 0.2), value: tapped)
         .padding(16)
         .background(colorScheme == .dark ? Color(UIColor.systemGray6) : Color.white)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
         .padding(.horizontal, 16)
+    }
+
+    private func bannerIcon(_ icon: String, filled: String, response: String) -> some View {
+        Button(action: { respond(response) }) {
+            Image(systemName: tapped == response ? filled : icon)
+                .font(.system(size: tapped == response ? 26 : 22, weight: .medium))
+                .foregroundColor(tapped == response ? .green : (colorScheme == .dark ? .white : .black))
+                .frame(width: 40, height: 40)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(ScaleButtonStyle())
+        .disabled(tapped != nil)
+    }
+
+    private func respond(_ value: String) {
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+        withAnimation { tapped = value }
+        onResponse(value)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            onDismiss()
+        }
     }
 }
 
@@ -344,6 +431,7 @@ struct ThumbsUpDownMessageView: View {
     let onResponse: (String) -> Void
     let onDismiss: () -> Void
     @Environment(\.colorScheme) var colorScheme
+    @State private var tapped: String?
 
     var body: some View {
         HStack(spacing: 16) {
@@ -354,59 +442,40 @@ struct ThumbsUpDownMessageView: View {
 
             Spacer()
 
-            BannerActionButton(
-                systemName: "hand.thumbsdown",
-                colorScheme: colorScheme,
-                action: {
-                    onResponse("thumbsDown")
-                    onDismiss()
-                }
-            )
+            bannerIcon("hand.thumbsdown", filled: "hand.thumbsdown.fill", response: "thumbsDown")
+                .opacity(tapped == nil || tapped == "thumbsDown" ? 1 : 0.3)
 
-            BannerActionButton(
-                systemName: "hand.thumbsup",
-                colorScheme: colorScheme,
-                action: {
-                    onResponse("thumbsUp")
-                    onDismiss()
-                }
-            )
+            bannerIcon("hand.thumbsup", filled: "hand.thumbsup.fill", response: "thumbsUp")
+                .opacity(tapped == nil || tapped == "thumbsUp" ? 1 : 0.3)
         }
+        .animation(.easeInOut(duration: 0.2), value: tapped)
         .padding(16)
         .background(colorScheme == .dark ? Color(UIColor.systemGray6) : Color.white)
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.15), radius: 8, x: 0, y: 4)
         .padding(.horizontal, 16)
     }
-}
 
-// MARK: - Shared banner button with tap scale + haptic
-
-struct BannerActionButton: View {
-    let systemName: String
-    let colorScheme: ColorScheme
-    let action: () -> Void
-    @State private var isPressed = false
-
-    var body: some View {
-        Button(action: {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
-            action()
-        }) {
-            Image(systemName: systemName)
-                .font(.system(size: 22, weight: .medium))
-                .foregroundColor(colorScheme == .dark ? .white : .black)
+    private func bannerIcon(_ icon: String, filled: String, response: String) -> some View {
+        Button(action: { respond(response) }) {
+            Image(systemName: tapped == response ? filled : icon)
+                .font(.system(size: tapped == response ? 26 : 22, weight: .medium))
+                .foregroundColor(tapped == response ? .green : (colorScheme == .dark ? .white : .black))
                 .frame(width: 40, height: 40)
                 .contentShape(Rectangle())
-                .scaleEffect(isPressed ? 0.85 : 1.0)
-                .animation(.easeInOut(duration: 0.1), value: isPressed)
         }
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(ScaleButtonStyle())
+        .disabled(tapped != nil)
+    }
+
+    private func respond(_ value: String) {
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+        withAnimation { tapped = value }
+        onResponse(value)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            onDismiss()
+        }
     }
 }
 
