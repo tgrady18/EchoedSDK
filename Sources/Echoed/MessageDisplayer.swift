@@ -102,6 +102,10 @@ struct ModalContainer<Content: View>: View {
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isPresented)
         .onAppear {
             DispatchQueue.main.async { isPresented = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                let generator = UIImpactFeedbackGenerator(style: .soft)
+                generator.impactOccurred()
+            }
         }
     }
 }
@@ -144,6 +148,10 @@ struct BannerContainer<Content: View>: View {
         .animation(.spring(response: 0.4, dampingFraction: 0.75), value: isPresented)
         .onAppear {
             DispatchQueue.main.async { isPresented = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+            }
         }
     }
 }
@@ -153,27 +161,33 @@ struct BannerContainer<Content: View>: View {
 /// Brief thank-you shown after submitting feedback in modal views.
 struct ThankYouView: View {
     @Environment(\.colorScheme) var colorScheme
-    @State private var checkScale: CGFloat = 0.3
+    @State private var checkScale: CGFloat = 0.2
     @State private var checkOpacity: CGFloat = 0
+    @State private var textOpacity: CGFloat = 0
 
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 44))
+                .font(.system(size: 48))
                 .foregroundColor(.green)
                 .scaleEffect(checkScale)
                 .opacity(checkOpacity)
             Text("Thanks!")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(colorScheme == .dark ? .white : .black)
-                .opacity(checkOpacity)
+                .opacity(textOpacity)
         }
         .onAppear {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+            // Checkmark pops in with a bouncy spring
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.45)) {
                 checkScale = 1.0
                 checkOpacity = 1.0
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            // Text fades in slightly after
+            withAnimation(.easeOut(duration: 0.3).delay(0.15)) {
+                textOpacity = 1.0
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                 let generator = UINotificationFeedbackGenerator()
                 generator.notificationOccurred(.success)
             }
@@ -381,21 +395,26 @@ struct YesNoMessageView: View {
     @State private var tapped: String?
 
     var body: some View {
-        HStack(spacing: 16) {
-            Text(message.title)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(colorScheme == .dark ? .white : .black)
-                .lineLimit(2)
+        HStack(spacing: tapped != nil ? 12 : 16) {
+            // Title morphs to "Thanks!" on response
+            ZStack(alignment: .leading) {
+                Text(message.title)
+                    .opacity(tapped == nil ? 1 : 0)
+                Text("Thanks!")
+                    .fontWeight(.semibold)
+                    .opacity(tapped != nil ? 1 : 0)
+            }
+            .font(.system(size: 16, weight: .medium))
+            .foregroundColor(colorScheme == .dark ? .white : .black)
+            .lineLimit(2)
 
             Spacer()
 
+            // Non-selected icon collapses, selected icon fills and bounces
             bannerIcon("xmark", filled: "xmark.circle.fill", response: "no")
-                .opacity(tapped == nil || tapped == "no" ? 1 : 0.3)
 
             bannerIcon("checkmark", filled: "checkmark.circle.fill", response: "yes")
-                .opacity(tapped == nil || tapped == "yes" ? 1 : 0.3)
         }
-        .animation(.easeInOut(duration: 0.2), value: tapped)
         .padding(16)
         .background(colorScheme == .dark ? Color(UIColor.systemGray6) : Color.white)
         .cornerRadius(16)
@@ -404,11 +423,15 @@ struct YesNoMessageView: View {
     }
 
     private func bannerIcon(_ icon: String, filled: String, response: String) -> some View {
-        Button(action: { respond(response) }) {
-            Image(systemName: tapped == response ? filled : icon)
-                .font(.system(size: tapped == response ? 26 : 22, weight: .medium))
-                .foregroundColor(tapped == response ? .green : (colorScheme == .dark ? .white : .black))
-                .frame(width: 40, height: 40)
+        let isSelected = tapped == response
+        let isOther = tapped != nil && tapped != response
+
+        return Button(action: { respond(response) }) {
+            Image(systemName: isSelected ? filled : icon)
+                .font(.system(size: isSelected ? 26 : 22, weight: .medium))
+                .foregroundColor(isSelected ? .green : (colorScheme == .dark ? .white : .black))
+                .frame(width: isOther ? 0 : 40, height: 40)
+                .opacity(isOther ? 0 : 1)
                 .contentShape(Rectangle())
         }
         .buttonStyle(ScaleButtonStyle())
@@ -418,9 +441,11 @@ struct YesNoMessageView: View {
     private func respond(_ value: String) {
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
-        withAnimation { tapped = value }
         onResponse(value)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.55)) {
+            tapped = value
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             onDismiss()
         }
     }
@@ -434,21 +459,24 @@ struct ThumbsUpDownMessageView: View {
     @State private var tapped: String?
 
     var body: some View {
-        HStack(spacing: 16) {
-            Text(message.title)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(colorScheme == .dark ? .white : .black)
-                .lineLimit(2)
+        HStack(spacing: tapped != nil ? 12 : 16) {
+            ZStack(alignment: .leading) {
+                Text(message.title)
+                    .opacity(tapped == nil ? 1 : 0)
+                Text("Thanks!")
+                    .fontWeight(.semibold)
+                    .opacity(tapped != nil ? 1 : 0)
+            }
+            .font(.system(size: 16, weight: .medium))
+            .foregroundColor(colorScheme == .dark ? .white : .black)
+            .lineLimit(2)
 
             Spacer()
 
             bannerIcon("hand.thumbsdown", filled: "hand.thumbsdown.fill", response: "thumbsDown")
-                .opacity(tapped == nil || tapped == "thumbsDown" ? 1 : 0.3)
 
             bannerIcon("hand.thumbsup", filled: "hand.thumbsup.fill", response: "thumbsUp")
-                .opacity(tapped == nil || tapped == "thumbsUp" ? 1 : 0.3)
         }
-        .animation(.easeInOut(duration: 0.2), value: tapped)
         .padding(16)
         .background(colorScheme == .dark ? Color(UIColor.systemGray6) : Color.white)
         .cornerRadius(16)
@@ -457,11 +485,15 @@ struct ThumbsUpDownMessageView: View {
     }
 
     private func bannerIcon(_ icon: String, filled: String, response: String) -> some View {
-        Button(action: { respond(response) }) {
-            Image(systemName: tapped == response ? filled : icon)
-                .font(.system(size: tapped == response ? 26 : 22, weight: .medium))
-                .foregroundColor(tapped == response ? .green : (colorScheme == .dark ? .white : .black))
-                .frame(width: 40, height: 40)
+        let isSelected = tapped == response
+        let isOther = tapped != nil && tapped != response
+
+        return Button(action: { respond(response) }) {
+            Image(systemName: isSelected ? filled : icon)
+                .font(.system(size: isSelected ? 26 : 22, weight: .medium))
+                .foregroundColor(isSelected ? .green : (colorScheme == .dark ? .white : .black))
+                .frame(width: isOther ? 0 : 40, height: 40)
+                .opacity(isOther ? 0 : 1)
                 .contentShape(Rectangle())
         }
         .buttonStyle(ScaleButtonStyle())
@@ -471,9 +503,11 @@ struct ThumbsUpDownMessageView: View {
     private func respond(_ value: String) {
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
-        withAnimation { tapped = value }
         onResponse(value)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.55)) {
+            tapped = value
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             onDismiss()
         }
     }
