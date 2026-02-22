@@ -85,21 +85,24 @@ class MessageDisplayer {
 
 // MARK: - Animated Containers
 
-/// Wraps modal views with a fade-in backdrop and scale animation.
+/// Glass backdrop with scale entrance for modal views.
 struct ModalContainer<Content: View>: View {
     let content: () -> Content
     @State private var isPresented = false
 
     var body: some View {
         ZStack {
-            Color.black.opacity(isPresented ? 0.5 : 0)
+            // Frosted glass backdrop — not a flat black overlay
+            Color.clear
+                .background(.ultraThinMaterial)
+                .opacity(isPresented ? 1 : 0)
                 .ignoresSafeArea()
 
             content()
-                .scaleEffect(isPresented ? 1 : 0.92)
+                .scaleEffect(isPresented ? 1 : 0.88)
                 .opacity(isPresented ? 1 : 0)
         }
-        .animation(.easeOut(duration: 0.4), value: isPresented)
+        .animation(.easeOut(duration: 0.45), value: isPresented)
         .onAppear {
             DispatchQueue.main.async { isPresented = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
@@ -110,7 +113,7 @@ struct ModalContainer<Content: View>: View {
     }
 }
 
-/// Wraps banner views with slide-down, swipe-to-dismiss, and tap-outside-to-dismiss.
+/// Slide-down container for banner views with swipe-to-dismiss.
 struct BannerContainer<Content: View>: View {
     let onDismiss: () -> Void
     let content: () -> Content
@@ -136,7 +139,7 @@ struct BannerContainer<Content: View>: View {
                                 if value.translation.height < -40 {
                                     onDismiss()
                                 } else {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
                                         dragOffset = 0
                                     }
                                 }
@@ -145,7 +148,7 @@ struct BannerContainer<Content: View>: View {
                 Spacer()
             }
         }
-        .animation(.spring(response: 0.5, dampingFraction: 0.78), value: isPresented)
+        .animation(.spring(response: 0.55, dampingFraction: 0.82), value: isPresented)
         .onAppear {
             DispatchQueue.main.async { isPresented = true }
         }
@@ -154,40 +157,57 @@ struct BannerContainer<Content: View>: View {
 
 // MARK: - Shared Components
 
-/// Confirmation shown after submitting feedback in modal views.
+/// Confirmation moment after submitting feedback.
 struct ThankYouView: View {
-    @Environment(\.colorScheme) var colorScheme
     @State private var checkScale: CGFloat = 0.0
     @State private var checkOpacity: CGFloat = 0
-    @State private var textOffset: CGFloat = 8
+    @State private var glowScale: CGFloat = 0.5
+    @State private var glowOpacity: CGFloat = 0
+    @State private var textOffset: CGFloat = 12
     @State private var textOpacity: CGFloat = 0
 
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 52))
-                .foregroundColor(.green)
-                .scaleEffect(checkScale)
-                .opacity(checkOpacity)
+        VStack(spacing: 20) {
+            ZStack {
+                // Soft green glow behind the checkmark
+                Circle()
+                    .fill(Color.green.opacity(0.12))
+                    .frame(width: 88, height: 88)
+                    .scaleEffect(glowScale)
+                    .opacity(glowOpacity)
+
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 56))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundColor(.green)
+                    .scaleEffect(checkScale)
+                    .opacity(checkOpacity)
+            }
+
             Text("Thank you")
-                .font(.system(size: 17, weight: .medium))
-                .foregroundColor(colorScheme == .dark ? .white.opacity(0.7) : .black.opacity(0.6))
+                .font(.system(.title3, design: .rounded).weight(.medium))
+                .foregroundColor(.secondary)
                 .offset(y: textOffset)
                 .opacity(textOpacity)
         }
         .onAppear {
-            // Checkmark: deliberate spring with visible bounce
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.55).delay(0.1)) {
+            // Glow expands first
+            withAnimation(.easeOut(duration: 0.5).delay(0.05)) {
+                glowScale = 1.0
+                glowOpacity = 1.0
+            }
+            // Checkmark bounces in
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.55).delay(0.1)) {
                 checkScale = 1.0
                 checkOpacity = 1.0
             }
-            // Text slides up and fades in after checkmark lands
-            withAnimation(.easeOut(duration: 0.4).delay(0.4)) {
+            // Text slides up after checkmark settles
+            withAnimation(.easeOut(duration: 0.5).delay(0.5)) {
                 textOffset = 0
                 textOpacity = 1.0
             }
-            // Success haptic timed to checkmark landing
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            // Haptic timed to checkmark landing
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 let generator = UINotificationFeedbackGenerator()
                 generator.notificationOccurred(.success)
             }
@@ -195,12 +215,12 @@ struct ThankYouView: View {
     }
 }
 
-/// Subtle press-scale for interactive elements.
+/// Press-scale for buttons.
 struct ScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
-            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.easeInOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
@@ -218,83 +238,93 @@ struct TextInputMessageView: View {
     private var isFormValid: Bool { !userInput.isEmpty }
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 0) {
             if submitted {
                 ThankYouView()
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 44)
+                    .padding(.vertical, 48)
             } else {
+                // Close button
                 HStack {
                     Spacer()
                     Button(action: onDismiss) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundColor(.secondary)
-                            .frame(width: 32, height: 32)
-                            .background(Color(UIColor.systemGray5))
+                            .frame(width: 30, height: 30)
+                            .background(Color(UIColor.tertiarySystemFill))
                             .clipShape(Circle())
                     }
-                    .padding(.trailing, 16)
-                    .padding(.top, 12)
                 }
+                .padding(.trailing, 20)
+                .padding(.top, 16)
 
+                // Title
                 Text(message.title)
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .font(.system(.title3, design: .rounded).weight(.bold))
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, 28)
+                    .padding(.top, 4)
 
+                // Subtitle
                 if !message.content.isEmpty {
                     Text(message.content)
-                        .font(.subheadline)
+                        .font(.system(.subheadline, design: .rounded))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, 28)
+                        .padding(.top, 6)
                 }
 
-                TextField("Your thoughts...", text: $userInput)
+                // Text field
+                TextField("Share your thoughts...", text: $userInput)
+                    .font(.system(.body, design: .rounded))
                     .padding(14)
-                    .background(Color(UIColor.systemGray6))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                    .cornerRadius(12)
-                    .padding(.horizontal, 20)
+                    .background(Color(UIColor.tertiarySystemFill))
+                    .cornerRadius(14)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 20)
 
+                // Submit
                 Button(action: submit) {
                     Text("Submit")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(.body, design: .rounded).weight(.semibold))
                         .foregroundColor(colorScheme == .dark ? .black : .white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        .padding(.vertical, 15)
                         .background(colorScheme == .dark ? Color.white : Color.black)
-                        .cornerRadius(12)
+                        .clipShape(Capsule())
                 }
                 .buttonStyle(ScaleButtonStyle())
                 .disabled(!isFormValid)
-                .opacity(isFormValid ? 1.0 : 0.4)
+                .opacity(isFormValid ? 1.0 : 0.35)
                 .scaleEffect(isFormValid ? 1.0 : 0.98)
-                .animation(.easeInOut(duration: 0.3), value: isFormValid)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 20)
+                .animation(.easeInOut(duration: 0.35), value: isFormValid)
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
+                .padding(.bottom, 24)
             }
         }
-        .animation(.easeInOut(duration: 0.4), value: submitted)
-        .background(colorScheme == .dark ? Color(UIColor.systemGray6) : Color.white)
-        .cornerRadius(24)
-        .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 8)
+        .animation(.easeInOut(duration: 0.45), value: submitted)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : .white)
+                .shadow(color: .black.opacity(0.06), radius: 24, x: 0, y: 10)
+        )
         .opacity(dismissing ? 0 : 1)
-        .scaleEffect(dismissing ? 0.95 : 1.0)
-        .animation(.easeIn(duration: 0.25), value: dismissing)
-        .padding(.horizontal, 24)
-        .frame(maxWidth: 380)
+        .scaleEffect(dismissing ? 0.92 : 1.0)
+        .animation(.easeIn(duration: 0.3), value: dismissing)
+        .padding(.horizontal, 20)
+        .frame(maxWidth: 400)
     }
 
     private func submit() {
         onResponse(userInput)
         withAnimation { submitted = true }
-        // Hold for the thank-you to breathe, then gracefully exit
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
             withAnimation { dismissing = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 onDismiss()
             }
         }
@@ -314,41 +344,44 @@ struct MultiChoiceMessageView: View {
     private var isFormValid: Bool { selectedOption != nil }
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 0) {
             if submitted {
                 ThankYouView()
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 44)
+                    .padding(.vertical, 48)
             } else {
                 HStack {
                     Spacer()
                     Button(action: onDismiss) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundColor(.secondary)
-                            .frame(width: 32, height: 32)
-                            .background(Color(UIColor.systemGray5))
+                            .frame(width: 30, height: 30)
+                            .background(Color(UIColor.tertiarySystemFill))
                             .clipShape(Circle())
                     }
-                    .padding(.trailing, 16)
-                    .padding(.top, 12)
                 }
+                .padding(.trailing, 20)
+                .padding(.top, 16)
 
                 Text(message.title)
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .font(.system(.title3, design: .rounded).weight(.bold))
+                    .foregroundColor(.primary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, 28)
+                    .padding(.top, 4)
 
                 if !message.content.isEmpty {
                     Text(message.content)
-                        .font(.subheadline)
+                        .font(.system(.subheadline, design: .rounded))
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, 28)
+                        .padding(.top, 6)
                 }
 
-                VStack(spacing: 0) {
+                // Options
+                VStack(spacing: 8) {
                     ForEach(options, id: \.self) { option in
                         Button(action: {
                             let generator = UISelectionFeedbackGenerator()
@@ -358,59 +391,74 @@ struct MultiChoiceMessageView: View {
                             }
                         }) {
                             HStack(spacing: 14) {
-                                Image(systemName: selectedOption == option ? "circle.inset.filled" : "circle")
-                                    .font(.system(size: 20))
-                                    .foregroundColor(selectedOption == option ?
-                                        (colorScheme == .dark ? .white : .black) :
-                                        Color(UIColor.systemGray3))
+                                Image(systemName: selectedOption == option ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 22))
+                                    .symbolRenderingMode(.hierarchical)
+                                    .foregroundColor(selectedOption == option ? .green : Color(UIColor.systemGray3))
                                 Text(option)
-                                    .font(.system(size: 16))
-                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                                    .font(.system(.body, design: .rounded))
+                                    .foregroundColor(.primary)
                                 Spacer()
                             }
-                            .padding(.vertical, 14)
-                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .padding(.horizontal, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(selectedOption == option ?
+                                        Color.green.opacity(0.08) :
+                                        Color(UIColor.tertiarySystemFill))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .strokeBorder(selectedOption == option ?
+                                        Color.green.opacity(0.3) : .clear, lineWidth: 1.5)
+                            )
                         }
                     }
                 }
                 .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
 
                 Button(action: submit) {
                     Text("Submit")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(.body, design: .rounded).weight(.semibold))
                         .foregroundColor(colorScheme == .dark ? .black : .white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        .padding(.vertical, 15)
                         .background(colorScheme == .dark ? Color.white : Color.black)
-                        .cornerRadius(12)
+                        .clipShape(Capsule())
                 }
                 .buttonStyle(ScaleButtonStyle())
                 .disabled(!isFormValid)
-                .opacity(isFormValid ? 1.0 : 0.4)
+                .opacity(isFormValid ? 1.0 : 0.35)
                 .scaleEffect(isFormValid ? 1.0 : 0.98)
-                .animation(.easeInOut(duration: 0.3), value: isFormValid)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 20)
+                .animation(.easeInOut(duration: 0.35), value: isFormValid)
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
+                .padding(.bottom, 24)
             }
         }
-        .animation(.easeInOut(duration: 0.4), value: submitted)
-        .background(colorScheme == .dark ? Color(UIColor.systemGray6) : Color.white)
-        .cornerRadius(24)
-        .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 8)
+        .animation(.easeInOut(duration: 0.45), value: submitted)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : .white)
+                .shadow(color: .black.opacity(0.06), radius: 24, x: 0, y: 10)
+        )
         .opacity(dismissing ? 0 : 1)
-        .scaleEffect(dismissing ? 0.95 : 1.0)
-        .animation(.easeIn(duration: 0.25), value: dismissing)
-        .padding(.horizontal, 24)
-        .frame(maxWidth: 380)
+        .scaleEffect(dismissing ? 0.92 : 1.0)
+        .animation(.easeIn(duration: 0.3), value: dismissing)
+        .padding(.horizontal, 20)
+        .frame(maxWidth: 400)
     }
 
     private func submit() {
         guard let selectedOption = selectedOption else { return }
         onResponse(selectedOption)
         withAnimation { submitted = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
             withAnimation { dismissing = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 onDismiss()
             }
         }
@@ -423,7 +471,6 @@ struct YesNoMessageView: View {
     let message: Message
     let onResponse: (String) -> Void
     let onDismiss: () -> Void
-    @Environment(\.colorScheme) var colorScheme
     @State private var tapped: String?
     @State private var slideOut = false
 
@@ -435,8 +482,8 @@ struct YesNoMessageView: View {
                 Text("Thank you")
                     .opacity(tapped != nil ? 1 : 0)
             }
-            .font(.system(size: 16, weight: .medium))
-            .foregroundColor(colorScheme == .dark ? .white : .black)
+            .font(.system(.subheadline, design: .rounded).weight(.medium))
+            .foregroundColor(.primary)
             .lineLimit(2)
 
             Spacer(minLength: 8)
@@ -444,12 +491,12 @@ struct YesNoMessageView: View {
             bannerIcon("xmark", filled: "xmark.circle.fill", response: "no")
             bannerIcon("checkmark", filled: "checkmark.circle.fill", response: "yes")
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
         .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(colorScheme == .dark ? Color(UIColor.systemGray6) : Color.white)
-                .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 4)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.08), radius: 16, x: 0, y: 6)
         )
         .padding(.horizontal, 12)
         .offset(y: slideOut ? -100 : 0)
@@ -463,8 +510,9 @@ struct YesNoMessageView: View {
 
         return Button(action: { respond(response) }) {
             Image(systemName: isSelected ? filled : icon)
-                .font(.system(size: isSelected ? 28 : 22, weight: .medium))
-                .foregroundColor(isSelected ? .green : (colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.7)))
+                .font(.system(size: isSelected ? 28 : 20, weight: .medium))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundColor(isSelected ? .green : .primary.opacity(0.6))
                 .frame(width: isOther ? 0 : 44, height: 44)
                 .opacity(isOther ? 0 : 1)
                 .contentShape(Rectangle())
@@ -476,17 +524,14 @@ struct YesNoMessageView: View {
 
     private func respond(_ value: String) {
         onResponse(value)
-        // 1: Icon fills + shifts
         withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
             tapped = value
         }
-        // 2: Success haptic timed to the icon settling
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.success)
         }
-        // 3: Hold, then slide up and away
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
             slideOut = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 onDismiss()
@@ -499,7 +544,6 @@ struct ThumbsUpDownMessageView: View {
     let message: Message
     let onResponse: (String) -> Void
     let onDismiss: () -> Void
-    @Environment(\.colorScheme) var colorScheme
     @State private var tapped: String?
     @State private var slideOut = false
 
@@ -511,8 +555,8 @@ struct ThumbsUpDownMessageView: View {
                 Text("Thank you")
                     .opacity(tapped != nil ? 1 : 0)
             }
-            .font(.system(size: 16, weight: .medium))
-            .foregroundColor(colorScheme == .dark ? .white : .black)
+            .font(.system(.subheadline, design: .rounded).weight(.medium))
+            .foregroundColor(.primary)
             .lineLimit(2)
 
             Spacer(minLength: 8)
@@ -520,12 +564,12 @@ struct ThumbsUpDownMessageView: View {
             bannerIcon("hand.thumbsdown", filled: "hand.thumbsdown.fill", response: "thumbsDown")
             bannerIcon("hand.thumbsup", filled: "hand.thumbsup.fill", response: "thumbsUp")
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
         .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(colorScheme == .dark ? Color(UIColor.systemGray6) : Color.white)
-                .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 4)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.08), radius: 16, x: 0, y: 6)
         )
         .padding(.horizontal, 12)
         .offset(y: slideOut ? -100 : 0)
@@ -539,8 +583,9 @@ struct ThumbsUpDownMessageView: View {
 
         return Button(action: { respond(response) }) {
             Image(systemName: isSelected ? filled : icon)
-                .font(.system(size: isSelected ? 28 : 22, weight: .medium))
-                .foregroundColor(isSelected ? .green : (colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.7)))
+                .font(.system(size: isSelected ? 28 : 20, weight: .medium))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundColor(isSelected ? .green : .primary.opacity(0.6))
                 .frame(width: isOther ? 0 : 44, height: 44)
                 .opacity(isOther ? 0 : 1)
                 .contentShape(Rectangle())
@@ -552,17 +597,14 @@ struct ThumbsUpDownMessageView: View {
 
     private func respond(_ value: String) {
         onResponse(value)
-        // 1: Icon fills + shifts
         withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
             tapped = value
         }
-        // 2: Success haptic timed to the icon settling
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.success)
         }
-        // 3: Hold, then slide up and away
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
             slideOut = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 onDismiss()
@@ -575,79 +617,47 @@ struct ThumbsUpDownMessageView: View {
 
 struct TextInputMessageView_Previews: PreviewProvider {
     static var previews: some View {
-        Group {
-            ZStack {
-                Color.gray.ignoresSafeArea()
-                TextInputMessageView(
-                    message: Message(id: "1", anchorId: "a", type: .textInput,
-                        title: "How's your experience so far?",
-                        content: "We'd love to hear your thoughts",
-                        options: nil),
-                    onResponse: { _ in }, onDismiss: {}
-                )
-            }
-            .previewDisplayName("Light")
-            .preferredColorScheme(.light)
-
-            ZStack {
-                Color.black.ignoresSafeArea()
-                TextInputMessageView(
-                    message: Message(id: "1", anchorId: "a", type: .textInput,
-                        title: "How's your experience so far?",
-                        content: "We'd love to hear your thoughts",
-                        options: nil),
-                    onResponse: { _ in }, onDismiss: {}
-                )
-            }
-            .previewDisplayName("Dark")
-            .preferredColorScheme(.dark)
+        ZStack {
+            Color.blue.opacity(0.3).ignoresSafeArea()
+            TextInputMessageView(
+                message: Message(id: "1", anchorId: "a", type: .textInput,
+                    title: "How's your experience?",
+                    content: "We'd love your feedback", options: nil),
+                onResponse: { _ in }, onDismiss: {}
+            )
         }
     }
 }
 
 struct MultiChoiceMessageView_Previews: PreviewProvider {
     static var previews: some View {
-        Group {
-            ZStack {
-                Color.gray.ignoresSafeArea()
-                MultiChoiceMessageView(
-                    message: Message(id: "2", anchorId: "a", type: .multiChoice,
-                        title: "How was your experience?",
-                        content: "", options: ["Great", "Good", "Okay", "Not great"]),
-                    options: ["Great", "Good", "Okay", "Not great"],
-                    onResponse: { _ in }, onDismiss: {}
-                )
-            }
-            .previewDisplayName("Light")
-            .preferredColorScheme(.light)
+        ZStack {
+            Color.blue.opacity(0.3).ignoresSafeArea()
+            MultiChoiceMessageView(
+                message: Message(id: "2", anchorId: "a", type: .multiChoice,
+                    title: "How was your experience?",
+                    content: "", options: ["Great", "Good", "Okay", "Not great"]),
+                options: ["Great", "Good", "Okay", "Not great"],
+                onResponse: { _ in }, onDismiss: {}
+            )
         }
     }
 }
 
-struct YesNoMessageView_Previews: PreviewProvider {
+struct BannerMessageView_Previews: PreviewProvider {
     static var previews: some View {
-        Group {
-            VStack { YesNoMessageView(
+        VStack(spacing: 16) {
+            YesNoMessageView(
                 message: Message(id: "3", anchorId: "a", type: .yesNo,
                     title: "Was this helpful?", content: "", options: nil),
                 onResponse: { _ in }, onDismiss: {}
-            ); Spacer() }
-            .previewDisplayName("Light")
-            .preferredColorScheme(.light)
-        }
-    }
-}
-
-struct ThumbsUpDownMessageView_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            VStack { ThumbsUpDownMessageView(
+            )
+            ThumbsUpDownMessageView(
                 message: Message(id: "4", anchorId: "a", type: .thumbsUpDown,
-                    title: "Did you enjoy this feature?", content: "", options: nil),
+                    title: "Enjoying this feature?", content: "", options: nil),
                 onResponse: { _ in }, onDismiss: {}
-            ); Spacer() }
-            .previewDisplayName("Light")
-            .preferredColorScheme(.light)
+            )
+            Spacer()
         }
     }
 }
