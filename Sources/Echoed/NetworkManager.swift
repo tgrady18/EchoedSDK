@@ -1,34 +1,34 @@
 import Foundation
 
-struct FetchMessagesResponse: Codable {
+private struct FetchMessagesResponse: Codable {
     let messages: [Message]
 }
 
-public class NetworkManager {
+class NetworkManager {
     private let baseURL = "https://us-central1-echoed-ccedb.cloudfunctions.net/"
     private var apiKey: String?
     private var companyId: String?
 
-    public func initialize(withApiKey apiKey: String, companyId: String) {
+    func initialize(withApiKey apiKey: String, companyId: String) {
         self.apiKey = apiKey
         self.companyId = companyId
     }
-    
-    
+
+
     // MARK: - Echo Methods
-    public func sendEcho(anchorId: String, userTags: UserTagManager, completion: @escaping (Result<Void, Error>) -> Void) {
+    func sendEcho(anchorId: String, userTags: UserTagManager, completion: @escaping (Result<Void, Error>) -> Void) {
         guard let companyId = companyId else {
             completion(.failure(NetworkError.companyIdNotSet))
             return
         }
-        
+
         let endpoint = baseURL + "sendEcho"
         let parameters: [String: Any] = [
             "companyId": companyId,
             "anchorId": anchorId,
             "userTags": userTags.getAllTagsForNetwork()
         ]
-        
+
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
             switch result {
             case .success:
@@ -38,8 +38,8 @@ public class NetworkManager {
             }
         }
     }
-    
-    public func fetchMessagesForAnchor(anchorId: String, userTags: UserTagManager, completion: @escaping (Result<[Message], Error>) -> Void) {
+
+    func fetchMessagesForAnchor(anchorId: String, userTags: UserTagManager, completion: @escaping (Result<[Message], Error>) -> Void) {
         guard let companyId = companyId else {
             completion(.failure(NetworkError.companyIdNotSet))
             return
@@ -67,20 +67,20 @@ public class NetworkManager {
             }
         }
     }
-    
-    public func recordMessageDisplay(messageId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+
+    func recordMessageDisplay(messageId: String, completion: @escaping (Result<Void, Error>) -> Void) {
         guard let companyId = companyId else {
             completion(.failure(NetworkError.companyIdNotSet))
             return
         }
-        
+
         let endpoint = baseURL + "recordMessageDisplay"
         let parameters: [String: Any] = [
             "companyId": companyId,
             "messageId": messageId,
             "deviceId": EchoedSDK.shared.deviceManager.getDeviceId()
         ]
-        
+
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
             switch result {
             case .success:
@@ -90,17 +90,17 @@ public class NetworkManager {
             }
         }
     }
-    
+
     // MARK: - Anchor Methods
-    public func fetchAnchors(completion: @escaping (Result<[String], Error>) -> Void) {
+    func fetchAnchors(completion: @escaping (Result<[String], Error>) -> Void) {
         guard let companyId = companyId else {
             completion(.failure(NetworkError.companyIdNotSet))
             return
         }
-        
+
         let endpoint = baseURL + "fetchAnchors"
         let parameters = ["companyId": companyId]
-        
+
         makeRequest(to: endpoint, method: "GET", parameters: parameters) { result in
             switch result {
             case .success(let data):
@@ -115,8 +115,8 @@ public class NetworkManager {
             }
         }
     }
-    
-    public func recordAnchorHit(anchorId: String, completion: @escaping (Result<Void, Error>) -> Void) {
+
+    func recordAnchorHit(anchorId: String, completion: @escaping (Result<Void, Error>) -> Void) {
         guard let companyId = companyId else {
             completion(.failure(NetworkError.companyIdNotSet))
             return
@@ -127,7 +127,7 @@ public class NetworkManager {
             "companyId": companyId,
             "anchorId": anchorId
         ]
-        
+
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
             switch result {
             case .success:
@@ -137,17 +137,17 @@ public class NetworkManager {
             }
         }
     }
-    
+
     // MARK: - Message Methods
-    public func fetchRuleSets(completion: @escaping (Result<[RuleSet], Error>) -> Void) {
+    func fetchRuleSets(completion: @escaping (Result<[RuleSet], Error>) -> Void) {
         guard let companyId = companyId else {
             completion(.failure(NetworkError.companyIdNotSet))
             return
         }
-        
+
         let endpoint = baseURL + "fetchRuleSets"
         let parameters = ["companyId": companyId]
-        
+
         makeRequest(to: endpoint, method: "GET", parameters: parameters) { result in
             switch result {
             case .success(let data):
@@ -162,19 +162,19 @@ public class NetworkManager {
             }
         }
     }
-    
-    public func fetchMessages(for messageIds: [String], completion: @escaping (Result<[Message], Error>) -> Void) {
+
+    func fetchMessages(for messageIds: [String], completion: @escaping (Result<[Message], Error>) -> Void) {
         guard let companyId = companyId else {
             completion(.failure(NetworkError.companyIdNotSet))
             return
         }
-        
+
         let endpoint = baseURL + "fetchMessages"
         let parameters: [String: Any] = [
             "companyId": companyId,
             "messageIds": messageIds
         ]
-        
+
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
             switch result {
             case .success(let data):
@@ -189,8 +189,8 @@ public class NetworkManager {
             }
         }
     }
-    
-    public func sendMessageResponse(messageId: String, response: String, userTags: UserTagManager, completion: @escaping (Result<Void, Error>) -> Void) {
+
+    func sendMessageResponse(messageId: String, response: String, userTags: UserTagManager, completion: @escaping (Result<Void, Error>) -> Void) {
         guard let companyId = companyId else {
             completion(.failure(NetworkError.companyIdNotSet))
             return
@@ -203,7 +203,7 @@ public class NetworkManager {
             "response": response,
             "userTags": userTags.getAllTagsForNetwork()
         ]
-        
+
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
             switch result {
             case .success:
@@ -213,23 +213,22 @@ public class NetworkManager {
             }
         }
     }
-    
+
     // MARK: - Models
-    
-    
-    // In NetworkManager
-    public func updateTags(userTags: UserTagManager, completion: @escaping (Result<Void, Error>) -> Void) {
+
+
+    func updateTags(userTags: UserTagManager, completion: @escaping (Result<Void, Error>) -> Void) {
          guard let companyId = companyId else {
              completion(.failure(NetworkError.companyIdNotSet))
              return
          }
-         
+
          let endpoint = baseURL + "updateTags"
          let parameters: [String: Any] = [
              "companyId": companyId,
              "userTags": userTags.getAllTagsForNetwork()
          ]
-         
+
          makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
              switch result {
              case .success:
@@ -239,7 +238,7 @@ public class NetworkManager {
              }
          }
      }
-    
+
     public enum NetworkError: Error {
         case companyIdNotSet
         case invalidURL
@@ -253,14 +252,14 @@ public class NetworkManager {
             completion(.failure(NetworkError.invalidURL))
             return
         }
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         if let apiKey = apiKey {
             request.addValue(apiKey, forHTTPHeaderField: "X-API-Key")
         }
-        
+
         if method == "POST" {
             do {
                 request.httpBody = try JSONSerialization.data(withJSONObject: parameters)
@@ -275,18 +274,18 @@ public class NetworkManager {
                 request.url = url
             }
         }
-        
+
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 completion(.failure(error))
                 return
             }
-            
+
             guard let data = data else {
                 completion(.failure(NetworkError.noDataReceived))
                 return
             }
-            
+
             completion(.success(data))
         }.resume()
     }

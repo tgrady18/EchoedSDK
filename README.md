@@ -4,9 +4,9 @@ Drop-in user feedback for iOS — show contextual prompts at key moments and col
 
 ## Requirements
 
-- iOS 13.0+
-- Swift 5.3+
-- Xcode 12.0+
+- iOS 16.0+
+- Swift 5.7+
+- Xcode 14.0+
 
 ## Installation
 
@@ -95,14 +95,16 @@ You create anchors and link messages to them in the [Messages](https://echoed-fe
 
 ### Messages
 
-Messages are [created in the dashboard](https://echoed-feedback.com/messages/create) and displayed by the SDK. Two types are supported:
+Messages are [created in the dashboard](https://echoed-feedback.com/messages/create) and displayed by the SDK. Four types are supported:
 
 | Type | What the user sees |
 |---|---|
-| **Text Input** | A prompt with a title, description, free-form text field, and submit button |
-| **Multiple Choice** | A prompt with a title, description, scrollable option picker, and submit button |
+| **Text Input** | A modal with a title, description, free-form text field, and submit button |
+| **Multiple Choice** | A modal with a title, description, selectable options, and submit button |
+| **Yes / No** | A banner with a title and checkmark/X buttons |
+| **Thumbs Up / Down** | A banner with a title and thumbs up/down buttons |
 
-Messages appear as a centered modal with a semi-transparent backdrop. The UI adapts to light/dark mode automatically. Users can dismiss via the X button or submit a response.
+Modal messages (Text Input, Multiple Choice) appear centered with a frosted glass backdrop. Banner messages (Yes/No, Thumbs Up/Down) slide down from the top and can be swiped away. The UI adapts to light/dark mode automatically.
 
 Responses are sent to the backend automatically — no callback is needed on the developer side.
 
@@ -139,7 +141,7 @@ These appear alongside your custom tags in `getAllUserTags()` and are sent with 
 The SDK generates and persists a unique device identifier (UUID) in UserDefaults. This ID is sent with message fetch and display requests for tracking.
 
 ```swift
-let deviceId = EchoedSDK.shared.deviceManager.getDeviceId()
+let deviceId = EchoedSDK.shared.deviceId
 ```
 
 The device ID resets if the app is uninstalled and reinstalled.
@@ -165,11 +167,11 @@ EchoedSDK.shared.hitAnchor(_ anchorId: String)
 
 ```swift
 // Set a tag (creates or overwrites)
-EchoedSDK.shared.setUserTag(_ key: String, value: Any, type: UserTagManager.TagType)
+EchoedSDK.shared.setUserTag(_ key: String, value: Any, type: TagType)
 
 // Read tags
 EchoedSDK.shared.getUserTagValue(_ key: String) -> Any?
-EchoedSDK.shared.getUserTagType(_ key: String) -> UserTagManager.TagType?
+EchoedSDK.shared.getUserTagType(_ key: String) -> TagType?
 EchoedSDK.shared.getAllUserTags() -> [String: Any]
 
 // Remove a single custom tag (internal tags cannot be removed)
@@ -183,7 +185,7 @@ EchoedSDK.shared.clearAllUserTags()
 
 ```swift
 // Get the persistent device UUID
-EchoedSDK.shared.deviceManager.getDeviceId() -> String
+EchoedSDK.shared.deviceId -> String
 ```
 
 ### Debug
@@ -200,13 +202,13 @@ EchoedSDK.shared.printAllTags()
 1. **Verify credentials** — Confirm your `apiKey` and `companyId` are correct
 2. **Check the anchor ID** — The string passed to `hitAnchor` must exactly match what's configured in the dashboard
 3. **Check targeting rules** — Your user's tags may not satisfy the message's conditions
-4. **Check the console** — The SDK prints errors for network failures and missing configuration
+4. **Check the console** — The SDK logs errors for network failures and missing configuration (visible in Console.app under the "Echoed" subsystem)
 5. **Confirm a UIWindowScene is available** — The SDK needs an active window scene to present the overlay. Don't call `hitAnchor` before the app's UI has loaded.
 
 ### Responses not saving
 
 1. **Check network connectivity** — Responses are sent immediately on submit; there is no offline queue
-2. **Check console output** — Look for "Error sending response" messages
+2. **Check console output** — Look for error logs from the "Echoed" subsystem
 
 ### Build issues
 
@@ -218,7 +220,7 @@ EchoedSDK.shared.printAllTags()
 This SDK is the client-side half of Echoed. All message creation, anchor configuration, targeting rules, and response analytics live in the web dashboard at [echoed-feedback.com](https://echoed-feedback.com).
 
 From the dashboard you can:
-- [Create and edit feedback messages](https://echoed-feedback.com/messages/create) (text input or multiple choice)
+- [Create and edit feedback messages](https://echoed-feedback.com/messages/create) (text input, multiple choice, yes/no, thumbs up/down)
 - [Manage messages](https://echoed-feedback.com/messages) and link them to anchor IDs
 - [View collected responses](https://echoed-feedback.com/responses) and analyze feedback
 - [Browse insights](https://echoed-feedback.com/insights) generated from response data

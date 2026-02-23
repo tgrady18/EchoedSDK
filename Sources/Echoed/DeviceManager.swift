@@ -7,20 +7,20 @@
 import Foundation
 
 
-public class DeviceManager {
+class DeviceManager {
     private let userDefaults = UserDefaults.standard
     private let deviceIdKey = "EchoedDeviceId"
-    
-    public init() {
+
+    init() {
         // Ensure device ID exists on initialization
         _ = getDeviceId()
     }
-    
-    public func getDeviceId() -> String {
+
+    func getDeviceId() -> String {
         if let existingId = userDefaults.string(forKey: deviceIdKey) {
             return existingId
         }
-        
+
         let newId = UUID().uuidString
         userDefaults.set(newId, forKey: deviceIdKey)
         return newId
