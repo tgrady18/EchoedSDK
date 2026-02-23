@@ -1,119 +1,123 @@
 import Foundation
-import Combine
+import os
 
 public class EchoedSDK {
     public static let shared = EchoedSDK()
-    
-    public let networkManager: NetworkManager
-    private let userTagManager: UserTagManager
-    public let deviceManager: DeviceManager  // New line
-    public var userTags: UserTagManager {
-        return userTagManager
-    }
+    static let logger = Logger(subsystem: "com.echoed.sdk", category: "Echoed")
+
+    let networkManager: NetworkManager
+    let userTagManager: UserTagManager
+    let deviceManager: DeviceManager
     private let messageManager: MessageManager
-    
+
+    public var deviceId: String { deviceManager.getDeviceId() }
+
     private init() {
         networkManager = NetworkManager()
         userTagManager = UserTagManager()
-        deviceManager = DeviceManager()  // New line
+        deviceManager = DeviceManager()
         messageManager = MessageManager()
     }
-    
+
     public func initialize(apiKey: String, companyId: String) {
+        guard !apiKey.isEmpty, !companyId.isEmpty else {
+            Self.logger.error("initialize() called with empty apiKey or companyId")
+            return
+        }
         networkManager.initialize(withApiKey: apiKey, companyId: companyId)
     }
-    
+
     // MARK: - Anchor Methods
     public func hitAnchor(_ anchorId: String) {
         // Record anchor hit to the backend
         networkManager.recordAnchorHit(anchorId: anchorId) { result in
             switch result {
             case .success:
-                print("Anchor hit recorded successfully")
+                Self.logger.debug("Anchor hit recorded successfully")
             case .failure(let error):
-                print("Error recording anchor hit: \(error)")
+                Self.logger.error("Error recording anchor hit: \(error.localizedDescription)")
             }
         }
-        
+
         // Fetch messages for this anchor
-        networkManager.fetchMessagesForAnchor(anchorId: anchorId, userTags: userTags) { [weak self] result in
+        networkManager.fetchMessagesForAnchor(anchorId: anchorId, userTags: userTagManager) { [weak self] result in
             switch result {
             case .success(let messages):
                 DispatchQueue.main.async {
                     self?.messageManager.present(messages: messages)
                 }
             case .failure(let error):
-                print("Error fetching messages: \(error)")
+                Self.logger.error("Error fetching messages: \(error.localizedDescription)")
             }
         }
     }
-    
+
     // MARK: - User Tag Methods
-    public func setUserTag(_ key: String, value: Any, type: UserTagManager.TagType) {
+    public func setUserTag(_ key: String, value: Any, type: TagType) {
         // Set locally
         userTagManager.setTag(key, value: value, type: type)
-        
+
         // Sync with Firebase
         networkManager.updateTags(userTags: userTagManager) { result in
             switch result {
             case .success:
-                print("Tags synced with Firebase successfully")
+                Self.logger.debug("Tags synced with Firebase successfully")
             case .failure(let error):
-                print("Error syncing tags with Firebase: \(error)")
+                Self.logger.error("Error syncing tags with Firebase: \(error.localizedDescription)")
             }
         }
     }
-    
+
     public func getUserTagValue(_ key: String) -> Any? {
         return userTagManager.getTagValue(key)
     }
-    
-    public func getUserTagType(_ key: String) -> UserTagManager.TagType? {
+
+    public func getUserTagType(_ key: String) -> TagType? {
         return userTagManager.getTagType(key)
     }
-    
+
     public func getAllUserTags() -> [String: Any] {
         return userTagManager.getAllTagsForNetwork()
     }
-    
+
     public func removeUserTag(_ key: String) {
         userTagManager.removeTag(key)
         // Sync removal with Firebase
         networkManager.updateTags(userTags: userTagManager) { result in
             switch result {
             case .success:
-                print("Tag removal synced with Firebase successfully")
+                Self.logger.debug("Tag removal synced with Firebase successfully")
             case .failure(let error):
-                print("Error syncing tag removal with Firebase: \(error)")
+                Self.logger.error("Error syncing tag removal with Firebase: \(error.localizedDescription)")
             }
         }
     }
-    
+
     public func clearAllUserTags() {
         userTagManager.clearAllTags()
         // Sync cleared tags with Firebase
         networkManager.updateTags(userTags: userTagManager) { result in
             switch result {
             case .success:
-                print("Cleared tags synced with Firebase successfully")
+                Self.logger.debug("Cleared tags synced with Firebase successfully")
             case .failure(let error):
-                print("Error syncing cleared tags with Firebase: \(error)")
+                Self.logger.error("Error syncing cleared tags with Firebase: \(error.localizedDescription)")
             }
         }
     }
-    
+
     // MARK: - Debug Methods
     public func printAllTags() {
         userTagManager.printAllTags()
     }
-    
+
     // MARK: - Error Types
     public enum SDKError: Error {
         case notInitialized
         case invalidTagType
         case tagValidationFailed
-        case networkError(NetworkManager.NetworkError)
-        
+        case networkError(Error)
+
         var localizedDescription: String {
             switch self {
             case .notInitialized:
@@ -126,26 +130,5 @@ public class EchoedSDK {
                 return "Network error: \(error)"
             }
         }
-    }
-}
-
-// MARK: - Helper Extensions
-extension EchoedSDK {
-    public func getTagsAsDictionary() -> [String: [String: Any]] {
-        var result: [String: [String: Any]] = [:]
-        let tags = userTagManager.getAllTags()
-        
-        for (key, value) in tags {
-            if let tagData = value as? [String: Any],
-               let tagValue = tagData["value"],
-               let tagType = tagData["type"] as? String {
-                result[key] = [
-                    "value": tagValue,
-                    "type": tagType
-                ]
-            }
-        }
-        
-        return result
     }
 }

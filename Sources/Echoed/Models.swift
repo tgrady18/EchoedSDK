@@ -13,7 +13,12 @@ public struct Message: Codable, Identifiable {
     let type: MessageType
     let title: String
     let content: String
-    let options: [String]? // Optional
+    let options: [String]?
+    let sliderMin: Double?
+    let sliderMax: Double?
+    let sliderStep: Double?
+    let sliderMinLabel: String?
+    let sliderMaxLabel: String?
 }
 
 public enum TagType: String, Codable {
@@ -28,6 +33,7 @@ public enum MessageType: String, Codable {
     case textInput
     case yesNo
     case thumbsUpDown
+    case slider
 }
 
 
@@ -56,7 +62,7 @@ public struct RuleSet: Codable {
 // This helper struct allows us to encode/decode Any types
 public struct AnyCodable: Codable {
     public let value: Any
-       
+
        public init(_ value: Any) {
            self.value = value
        }

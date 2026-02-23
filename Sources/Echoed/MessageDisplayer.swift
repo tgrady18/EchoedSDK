@@ -9,9 +9,9 @@ class MessageDisplayer {
             EchoedSDK.shared.networkManager.recordMessageDisplay(messageId: message.id) { result in
                 switch result {
                 case .success:
-                    print("Display recorded successfully")
+                    EchoedSDK.logger.debug("Display recorded successfully")
                 case .failure(let error):
-                    print("Error recording display: \(error)")
+                    EchoedSDK.logger.error("Error recording display: \(error.localizedDescription)")
                 }
             }
 
@@ -44,6 +44,12 @@ class MessageDisplayer {
                     onResponse: completion,
                     onDismiss: { self.dismiss() }
                 ))
+            case .slider:
+                view = AnyView(SliderMessageView(
+                    message: message,
+                    onResponse: completion,
+                    onDismiss: { self.dismiss() }
+                ))
             }
 
             // Wrap in animated container — must capture inner view before reassigning
@@ -69,14 +75,14 @@ class MessageDisplayer {
                 self.window?.backgroundColor = .clear
                 self.window?.makeKeyAndVisible()
             } else {
-                print("No active UIWindowScene found.")
+                EchoedSDK.logger.error("No active UIWindowScene found")
             }
         }
     }
 
     private func dismiss() {
         DispatchQueue.main.async {
-            print("Dismiss called")
+            EchoedSDK.logger.debug("Dismissing message overlay")
             self.window?.isHidden = true
             self.window = nil
         }
@@ -465,6 +471,149 @@ struct MultiChoiceMessageView: View {
     }
 }
 
+struct SliderMessageView: View {
+    let message: Message
+    let onResponse: (String) -> Void
+    let onDismiss: () -> Void
+    @State private var sliderValue: Double
+    @State private var submitted = false
+    @State private var dismissing = false
+    @Environment(\.colorScheme) var colorScheme
+
+    private var minValue: Double { message.sliderMin ?? 1 }
+    private var maxValue: Double { message.sliderMax ?? 10 }
+    private var stepValue: Double { message.sliderStep ?? 1 }
+
+    init(message: Message, onResponse: @escaping (String) -> Void, onDismiss: @escaping () -> Void) {
+        self.message = message
+        self.onResponse = onResponse
+        self.onDismiss = onDismiss
+        let min = message.sliderMin ?? 1
+        let max = message.sliderMax ?? 10
+        _sliderValue = State(initialValue: ((min + max) / 2).rounded())
+    }
+
+    private var displayValue: String {
+        if stepValue == stepValue.rounded() && stepValue >= 1 {
+            return String(Int(sliderValue))
+        }
+        return String(format: "%.1f", sliderValue)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if submitted {
+                ThankYouView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 48)
+            } else {
+                // Close button
+                HStack {
+                    Spacer()
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.secondary)
+                            .frame(width: 30, height: 30)
+                            .background(Color(UIColor.tertiarySystemFill))
+                            .clipShape(Circle())
+                    }
+                }
+                .padding(.trailing, 20)
+                .padding(.top, 16)
+
+                // Title
+                Text(message.title)
+                    .font(.system(.title3, design: .rounded).weight(.bold))
+                    .foregroundColor(.primary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 28)
+                    .padding(.top, 4)
+
+                // Subtitle
+                if !message.content.isEmpty {
+                    Text(message.content)
+                        .font(.system(.subheadline, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 28)
+                        .padding(.top, 6)
+                }
+
+                // Value display
+                Text(displayValue)
+                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                    .padding(.top, 20)
+
+                // Slider
+                Slider(
+                    value: $sliderValue,
+                    in: minValue...maxValue,
+                    step: stepValue
+                )
+                .accentColor(colorScheme == .dark ? .white : .black)
+                .padding(.horizontal, 24)
+                .padding(.top, 8)
+
+                // Endpoint labels
+                if message.sliderMinLabel != nil || message.sliderMaxLabel != nil {
+                    HStack {
+                        Text(message.sliderMinLabel ?? "")
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(message.sliderMaxLabel ?? "")
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 28)
+                    .padding(.top, 4)
+                }
+
+                // Submit
+                Button(action: submit) {
+                    Text("Submit")
+                        .font(.system(.body, design: .rounded).weight(.semibold))
+                        .foregroundColor(colorScheme == .dark ? .black : .white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .background(colorScheme == .dark ? Color.white : Color.black)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(ScaleButtonStyle())
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
+                .padding(.bottom, 24)
+            }
+        }
+        .animation(.easeInOut(duration: 0.45), value: submitted)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : .white)
+                .shadow(color: .black.opacity(0.06), radius: 24, x: 0, y: 10)
+        )
+        .opacity(dismissing ? 0 : 1)
+        .scaleEffect(dismissing ? 0.92 : 1.0)
+        .animation(.easeIn(duration: 0.3), value: dismissing)
+        .padding(.horizontal, 20)
+        .frame(maxWidth: 400)
+    }
+
+    private func submit() {
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        onResponse(displayValue)
+        withAnimation { submitted = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+            withAnimation { dismissing = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                onDismiss()
+            }
+        }
+    }
+}
+
 // MARK: - Banner Views
 
 struct YesNoMessageView: View {
@@ -622,7 +771,9 @@ struct TextInputMessageView_Previews: PreviewProvider {
             TextInputMessageView(
                 message: Message(id: "1", anchorId: "a", type: .textInput,
                     title: "How's your experience?",
-                    content: "We'd love your feedback", options: nil),
+                    content: "We'd love your feedback", options: nil,
+                    sliderMin: nil, sliderMax: nil, sliderStep: nil,
+                    sliderMinLabel: nil, sliderMaxLabel: nil),
                 onResponse: { _ in }, onDismiss: {}
             )
         }
@@ -636,8 +787,26 @@ struct MultiChoiceMessageView_Previews: PreviewProvider {
             MultiChoiceMessageView(
                 message: Message(id: "2", anchorId: "a", type: .multiChoice,
                     title: "How was your experience?",
-                    content: "", options: ["Great", "Good", "Okay", "Not great"]),
+                    content: "", options: ["Great", "Good", "Okay", "Not great"],
+                    sliderMin: nil, sliderMax: nil, sliderStep: nil,
+                    sliderMinLabel: nil, sliderMaxLabel: nil),
                 options: ["Great", "Good", "Okay", "Not great"],
+                onResponse: { _ in }, onDismiss: {}
+            )
+        }
+    }
+}
+
+struct SliderMessageView_Previews: PreviewProvider {
+    static var previews: some View {
+        ZStack {
+            Color.blue.opacity(0.3).ignoresSafeArea()
+            SliderMessageView(
+                message: Message(id: "5", anchorId: "a", type: .slider,
+                    title: "How likely are you to recommend us?",
+                    content: "Drag the slider to rate", options: nil,
+                    sliderMin: 1, sliderMax: 10, sliderStep: 1,
+                    sliderMinLabel: "Not at all", sliderMaxLabel: "Absolutely"),
                 onResponse: { _ in }, onDismiss: {}
             )
         }
@@ -649,12 +818,16 @@ struct BannerMessageView_Previews: PreviewProvider {
         VStack(spacing: 16) {
             YesNoMessageView(
                 message: Message(id: "3", anchorId: "a", type: .yesNo,
-                    title: "Was this helpful?", content: "", options: nil),
+                    title: "Was this helpful?", content: "", options: nil,
+                    sliderMin: nil, sliderMax: nil, sliderStep: nil,
+                    sliderMinLabel: nil, sliderMaxLabel: nil),
                 onResponse: { _ in }, onDismiss: {}
             )
             ThumbsUpDownMessageView(
                 message: Message(id: "4", anchorId: "a", type: .thumbsUpDown,
-                    title: "Enjoying this feature?", content: "", options: nil),
+                    title: "Enjoying this feature?", content: "", options: nil,
+                    sliderMin: nil, sliderMax: nil, sliderStep: nil,
+                    sliderMinLabel: nil, sliderMaxLabel: nil),
                 onResponse: { _ in }, onDismiss: {}
             )
             Spacer()
