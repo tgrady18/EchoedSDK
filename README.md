@@ -95,7 +95,7 @@ You create anchors and link messages to them in the [Messages](https://echoed-fe
 
 ### Messages
 
-Messages are [created in the dashboard](https://echoed-feedback.com/messages/create) and displayed by the SDK. Four types are supported:
+Messages are [created in the dashboard](https://echoed-feedback.com/messages/create) and displayed by the SDK. Five types are supported:
 
 | Type | What the user sees |
 |---|---|
@@ -103,8 +103,9 @@ Messages are [created in the dashboard](https://echoed-feedback.com/messages/cre
 | **Multiple Choice** | A modal with a title, description, selectable options, and submit button |
 | **Yes / No** | A banner with a title and checkmark/X buttons |
 | **Thumbs Up / Down** | A banner with a title and thumbs up/down buttons |
+| **Slider** | A modal with a title, description, draggable slider with min/max labels, and submit button |
 
-Modal messages (Text Input, Multiple Choice) appear centered with a frosted glass backdrop. Banner messages (Yes/No, Thumbs Up/Down) slide down from the top and can be swiped away. The UI adapts to light/dark mode automatically.
+Modal messages (Text Input, Multiple Choice, Slider) appear centered with a frosted glass backdrop. Banner messages (Yes/No, Thumbs Up/Down) slide down from the top and can be swiped away. The UI adapts to light/dark mode automatically.
 
 Responses are sent to the backend automatically — no callback is needed on the developer side.
 
@@ -220,7 +221,7 @@ EchoedSDK.shared.printAllTags()
 This SDK is the client-side half of Echoed. All message creation, anchor configuration, targeting rules, and response analytics live in the web dashboard at [echoed-feedback.com](https://echoed-feedback.com).
 
 From the dashboard you can:
-- [Create and edit feedback messages](https://echoed-feedback.com/messages/create) (text input, multiple choice, yes/no, thumbs up/down)
+- [Create and edit feedback messages](https://echoed-feedback.com/messages/create) (text input, multiple choice, yes/no, thumbs up/down, slider)
 - [Manage messages](https://echoed-feedback.com/messages) and link them to anchor IDs
 - [View collected responses](https://echoed-feedback.com/responses) and analyze feedback
 - [Browse insights](https://echoed-feedback.com/insights) generated from response data
