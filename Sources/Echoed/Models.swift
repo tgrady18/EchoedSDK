@@ -28,6 +28,12 @@ public enum TagType: String, Codable {
     case boolean
 }
 
+public enum TagCategory: String, Codable {
+    case `internal`
+    case customer
+    case user
+}
+
 public enum MessageType: String, Codable {
     case multiChoice
     case textInput

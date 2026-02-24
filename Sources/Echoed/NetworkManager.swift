@@ -14,20 +14,29 @@ class NetworkManager {
         self.companyId = companyId
     }
 
+    /// Builds base parameters that every request should include.
+    private func baseParameters() -> [String: Any]? {
+        guard let companyId = companyId else { return nil }
+        var params: [String: Any] = [
+            "companyId": companyId,
+            "deviceId": EchoedSDK.shared.deviceManager.getDeviceId()
+        ]
+        if let customerId = EchoedSDK.shared.userTagManager.getCustomerId() {
+            params["customerId"] = customerId
+        }
+        return params
+    }
 
     // MARK: - Echo Methods
     func sendEcho(anchorId: String, userTags: UserTagManager, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let companyId = companyId else {
+        guard var parameters = baseParameters() else {
             completion(.failure(NetworkError.companyIdNotSet))
             return
         }
 
         let endpoint = baseURL + "sendEcho"
-        let parameters: [String: Any] = [
-            "companyId": companyId,
-            "anchorId": anchorId,
-            "userTags": userTags.getAllTagsForNetwork()
-        ]
+        parameters["anchorId"] = anchorId
+        parameters["userTags"] = userTags.getAllTagsForNetwork()
 
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
             switch result {
@@ -40,18 +49,14 @@ class NetworkManager {
     }
 
     func fetchMessagesForAnchor(anchorId: String, userTags: UserTagManager, completion: @escaping (Result<[Message], Error>) -> Void) {
-        guard let companyId = companyId else {
+        guard var parameters = baseParameters() else {
             completion(.failure(NetworkError.companyIdNotSet))
             return
         }
 
         let endpoint = baseURL + "fetchMessagesForAnchor"
-        let parameters: [String: Any] = [
-            "companyId": companyId,
-            "anchorId": anchorId,
-            "userTags": userTags.getAllTagsForNetwork(),
-            "deviceId": EchoedSDK.shared.deviceManager.getDeviceId()
-        ]
+        parameters["anchorId"] = anchorId
+        parameters["userTags"] = userTags.getAllTagsForNetwork()
 
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
             switch result {
@@ -69,17 +74,13 @@ class NetworkManager {
     }
 
     func recordMessageDisplay(messageId: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let companyId = companyId else {
+        guard var parameters = baseParameters() else {
             completion(.failure(NetworkError.companyIdNotSet))
             return
         }
 
         let endpoint = baseURL + "recordMessageDisplay"
-        let parameters: [String: Any] = [
-            "companyId": companyId,
-            "messageId": messageId,
-            "deviceId": EchoedSDK.shared.deviceManager.getDeviceId()
-        ]
+        parameters["messageId"] = messageId
 
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
             switch result {
@@ -117,16 +118,13 @@ class NetworkManager {
     }
 
     func recordAnchorHit(anchorId: String, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let companyId = companyId else {
+        guard var parameters = baseParameters() else {
             completion(.failure(NetworkError.companyIdNotSet))
             return
         }
 
         let endpoint = baseURL + "recordAnchorHit"
-        let parameters: [String: Any] = [
-            "companyId": companyId,
-            "anchorId": anchorId
-        ]
+        parameters["anchorId"] = anchorId
 
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
             switch result {
@@ -164,16 +162,13 @@ class NetworkManager {
     }
 
     func fetchMessages(for messageIds: [String], completion: @escaping (Result<[Message], Error>) -> Void) {
-        guard let companyId = companyId else {
+        guard var parameters = baseParameters() else {
             completion(.failure(NetworkError.companyIdNotSet))
             return
         }
 
         let endpoint = baseURL + "fetchMessages"
-        let parameters: [String: Any] = [
-            "companyId": companyId,
-            "messageIds": messageIds
-        ]
+        parameters["messageIds"] = messageIds
 
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
             switch result {
@@ -191,18 +186,15 @@ class NetworkManager {
     }
 
     func sendMessageResponse(messageId: String, response: String, userTags: UserTagManager, completion: @escaping (Result<Void, Error>) -> Void) {
-        guard let companyId = companyId else {
+        guard var parameters = baseParameters() else {
             completion(.failure(NetworkError.companyIdNotSet))
             return
         }
 
         let endpoint = baseURL + "sendMessageResponse"
-        let parameters: [String: Any] = [
-            "companyId": companyId,
-            "messageId": messageId,
-            "response": response,
-            "userTags": userTags.getAllTagsForNetwork()
-        ]
+        parameters["messageId"] = messageId
+        parameters["response"] = response
+        parameters["userTags"] = userTags.getAllTagsForNetwork()
 
         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
             switch result {
@@ -214,30 +206,24 @@ class NetworkManager {
         }
     }
 
-    // MARK: - Models
+    func syncTags(userTags: UserTagManager, completion: @escaping (Result<Void, Error>) -> Void) {
+        guard var parameters = baseParameters() else {
+            completion(.failure(NetworkError.companyIdNotSet))
+            return
+        }
 
+        let endpoint = baseURL + "updateTags"
+        parameters["userTags"] = userTags.getAllTagsForNetwork()
 
-    func updateTags(userTags: UserTagManager, completion: @escaping (Result<Void, Error>) -> Void) {
-         guard let companyId = companyId else {
-             completion(.failure(NetworkError.companyIdNotSet))
-             return
-         }
-
-         let endpoint = baseURL + "updateTags"
-         let parameters: [String: Any] = [
-             "companyId": companyId,
-             "userTags": userTags.getAllTagsForNetwork()
-         ]
-
-         makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
-             switch result {
-             case .success:
-                 completion(.success(()))
-             case .failure(let error):
-                 completion(.failure(error))
-             }
-         }
-     }
+        makeRequest(to: endpoint, method: "POST", parameters: parameters) { result in
+            switch result {
+            case .success:
+                completion(.success(()))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
 
     public enum NetworkError: Error {
         case companyIdNotSet
