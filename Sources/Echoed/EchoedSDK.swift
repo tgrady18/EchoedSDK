@@ -22,12 +22,12 @@ public class EchoedSDK {
         messageManager = MessageManager()
     }
 
-    public func initialize(apiKey: String, companyId: String) {
+    public func initialize(apiKey: String, companyId: String, baseURL: String? = nil) {
         guard !apiKey.isEmpty, !companyId.isEmpty else {
             Self.logger.error("initialize() called with empty apiKey or companyId")
             return
         }
-        networkManager.initialize(withApiKey: apiKey, companyId: companyId)
+        networkManager.initialize(withApiKey: apiKey, companyId: companyId, baseURL: baseURL)
     }
 
     // MARK: - Anchor Methods

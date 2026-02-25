@@ -5,13 +5,16 @@ private struct FetchMessagesResponse: Codable {
 }
 
 class NetworkManager {
-    private let baseURL = "https://us-central1-echoed-ccedb.cloudfunctions.net/"
+    private var baseURL = "https://us-central1-echoed-ccedb.cloudfunctions.net/"
     private var apiKey: String?
     private var companyId: String?
 
-    func initialize(withApiKey apiKey: String, companyId: String) {
+    func initialize(withApiKey apiKey: String, companyId: String, baseURL: String? = nil) {
         self.apiKey = apiKey
         self.companyId = companyId
+        if let baseURL = baseURL {
+            self.baseURL = baseURL.hasSuffix("/") ? baseURL : baseURL + "/"
+        }
     }
 
     /// Builds base parameters that every request should include.
